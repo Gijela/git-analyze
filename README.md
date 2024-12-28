@@ -1,127 +1,90 @@
 # GitIngest-TS
 
-一个用于将 Git 仓库转换为 LLM 友好文本的 TypeScript SDK。
+A lightweight Git code analysis tool optimized for LLM context.
 
-## 🚀 特性
+## ✨ Key Features
 
-- **简单易用**: 支持从 GitHub URL 或本地目录分析代码
-- **智能格式化**: 为 LLM 提示优化的输出格式
-- **完整统计**:
-  - 文件和目录结构
-  - 代码大小统计
-  - Token 数量估算
-- **类型安全**: 完整的 TypeScript 类型定义
-- **错误处理**: 全面的错误处理机制
+- Support for GitHub repositories and local directory analysis
+- Intelligent code parsing and formatting
+- Automatic project structure and statistics generation
+- Built-in token count estimation
+- Type-safe TypeScript API
 
-## 📦 安装
+## 📦 Installation
+
+todo
 
 ```bash
-npm install gitingest-ts
-# 或者
-pnpm add gitingest-ts
+# npm install gitingest-ts
 ```
 
-## 💡 基础用法
+## 🚀 Quick Start
 
 ```typescript
 import { GitIngest } from "gitingest-ts";
 
-// 初始化实例
+// Create analyzer instance
 const ingest = new GitIngest({
   tempDir: "./temp",
-  defaultMaxFileSize: 1024 * 1024, // 1MB
   defaultPatterns: {
-    exclude: ["**/node_modules/**", "**/.git/**", "**/dist/**"],
+    exclude: ["**/node_modules/**", "**/.git/**"],
   },
 });
 
-// 从 GitHub 仓库分析
-const result = await ingest.analyzeFromUrl("https://github.com/example/repo", {
-  branch: "main",
-});
+// Analyze GitHub repository
+const result = await ingest.analyzeFromUrl(
+  "https://github.com/Gijela/gitingest-ts"
+);
 
-// 或者分析本地目录
-const result = await ingest.analyzeFromDirectory("./my-project");
+// Or analyze local directory
+const result = await ingest.analyzeFromDirectory("./project");
 
-// 使用分析结果
-console.log(result.summary); // 项目摘要
-console.log(result.tree); // 文件树
-console.log(result.metadata); // 元数据
+console.log(result.summary); // Project overview
+console.log(result.tree); // File structure
 ```
 
-## 🔧 API 文档
-
-### GitIngest 类
-
-主要的分析类，用于初始化和执行分析。
-
-#### 配置选项
+## 📖 Configuration Options
 
 ```typescript
 interface GitIngestConfig {
-  tempDir?: string; // 临时目录路径
-  defaultMaxFileSize?: number; // 默认最大文件大小
+  tempDir?: string; // Temporary file directory
+  defaultMaxFileSize?: number; // File size limit
   defaultPatterns?: {
-    include?: string[]; // 包含的文件模式
-    exclude?: string[]; // 排除的文件模式
+    include?: string[]; // Included file patterns
+    exclude?: string[]; // Excluded file patterns
   };
 }
 ```
 
-#### 方法
-
-- `analyzeFromUrl(url: string, options?: AnalyzeOptions): Promise<AnalysisResult>`
-  - 从 GitHub URL 分析代码
-- `analyzeFromDirectory(path: string, options?: AnalyzeOptions): Promise<AnalysisResult>`
-  - 从本地目录分析代码
-
-### 分析选项
-
-```typescript
-interface AnalyzeOptions {
-  maxFileSize?: number; // 最大文件大小限制
-  includePatterns?: string[]; // 要包含的文件模式
-  excludePatterns?: string[]; // 要排除的文件模式
-  branch?: string; // Git 分支名
-  commit?: string; // Git commit 哈希
-}
-```
-
-### 分析结果
+## 🔍 Analysis Results
 
 ```typescript
 interface AnalysisResult {
-  summary: string; // 项目摘要
-  tree: string; // 文件树结构
-  content: string; // 文件内容
+  summary: string; // Project summary
+  tree: string; // File tree
+  content: string; // Code content
   metadata: {
-    files: number; // 文件数量
-    size: number; // 总大小
-    tokens: number; // Token 数量
+    files: number; // Number of files
+    size: number; // Total size
+    tokens: number; // Token count
   };
 }
 ```
 
-## ⚠️ 错误处理
+## ⚡️ Error Handling
 
 ```typescript
 try {
-  const result = await ingest.analyzeFromUrl("https://github.com/example/repo");
+  const result = await ingest.analyzeFromUrl(
+    "https://github.com/Gijela/gitingest-ts"
+  );
 } catch (error) {
   if (error instanceof GitIngestError) {
-    // 处理已知类型的错误
-    console.error(error.message);
-  } else {
-    // 处理其他错误
-    console.error("未知错误:", error);
+    console.error("Analysis error:", error.message);
   }
 }
 ```
 
-## 🤝 贡献
-
-欢迎提交 Pull Request 来改进这个项目！
-
-## 📄 许可证
+## 📄 License
 
 MIT

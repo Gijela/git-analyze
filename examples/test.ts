@@ -15,6 +15,8 @@ async function test() {
     console.log("Token数:", localResult.metadata.tokens);
     console.log("\n目录结构:");
     console.log(localResult.tree);
+    console.log("\n文件内容:");
+    console.log(localResult.content);
   } catch (error) {
     console.error("本地目录分析失败:", error);
   }
@@ -42,6 +44,8 @@ async function test() {
     console.log("Token数:", githubResult.metadata.tokens);
     console.log("\n目录结构:");
     console.log(githubResult.tree);
+    console.log("\n文件内容:");
+    console.log(githubResult.content);
   } catch (error) {
     console.error("GitHub 仓库分析失败:", error);
   }
