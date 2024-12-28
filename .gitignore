@@ -1,0 +1,43 @@
+# 依赖目录
+node_modules/
+
+# 构建输出
+dist/*
+build/*
+
+# 环境变量
+.env
+.env.local
+.env.*.local
+
+# 编辑器目录
+.vscode/
+.idea/
+*.sublime-*
+
+# 日志文件
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 临时目录
+temp/
+temp-*/
+tmp/
+
+# 测试覆盖率
+coverage/
+
+# TypeScript 缓存
+*.tsbuildinfo
+
+# 本地配置文件
+.npmrc
+.yarnrc
+.pnpmrc 
