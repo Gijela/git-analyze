@@ -11,27 +11,11 @@ async function test() {
   });
 
   try {
-    // // 测试分析特定目录
-    // console.log("\n1.1 分析特定目录：");
-    // console.log("正在分析目录...");
-    // // const dirResult = await localIngest.analyzeFromDirectory("./", {
-    // //   excludePatterns: ['*.test.ts', '*.spec.ts', 'dist/**']
-    // // });
-    // const dirResult = await localIngest.analyzeFromDirectory("./", {
-    //   excludePatterns: ['.png', '.jpg', 'public/**', 'dist/**']
-    // });
-    // console.log("分析完成！");
-    // console.log("\n分析结果:");
-    // console.log("- 文件数:", dirResult.metadata.files);
-    // console.log("- 总大小:", dirResult.metadata.size, "bytes");
-    // console.log("\n目录结构:");
-    // console.log(dirResult.tree);
-
     // 测试分析特定文件
     console.log("\n1.2 分析特定文件：");
     console.log("正在分析文件...");
-    const fileResult = await localIngest.analyzeFromDirectory("./", {
-      targetPaths: ['examples/test/index.ts']
+    const fileResult = await localIngest.analyzeFromDirectory("./", { // 分析当前目录下的文件
+      targetPaths: ['examples/test/index.ts', 'examples/scanner.ts'] // 分析指定入口文件, 会递归分析出所有的依赖文件
     });
     console.log("分析完成！");
     console.log("\n分析结果:");
@@ -46,37 +30,35 @@ async function test() {
   }
 
   // 2. 测试 GitHub 仓库选择性分析
-  // console.log("\n2. 测试 GitHub 仓库选择性分析");
-  // const githubIngest = new GitIngest({
-  //   tempDir: "./temp-test",
-  //   keepTempFiles: false,
-  //   defaultPatterns: {
-  //     exclude: ["**/node_modules/**", "**/.git/**", "**/dist/**"],
-  //   }
-  // });
+  console.log("\n2. 测试 GitHub 仓库选择性分析");
+  const githubIngest = new GitIngest({
+    tempDir: "./temp-test",
+    keepTempFiles: false,
+    defaultPatterns: {
+      exclude: ["**/node_modules/**", "**/.git/**", "**/dist/**"],
+    }
+  });
 
-  // try {
-  //   const githubResult = await githubIngest.analyzeFromUrl(
-  //     "https://github.com/Gijela/gitingest-ts",
-  //     {
-  //       branch: "main",
-  //       maxFileSize: 500 * 1024, // 500KB
-  //       targetPaths: [
-  //         'src/core/git.ts',           // 分析整个 core 目录
-  //         'README.md',           // 分析 README 文件
-  //         'package.json'         // 分析 package.json
-  //       ]
-  //     }
-  //   );
-  //   console.log("\nGitHub 仓库分析结果:");
-  //   console.log(githubResult.summary);
-  //   console.log("\n目录结构:");
-  //   console.log(githubResult.tree);
-  //   console.log("\n文件内容:");
-  //   console.log(githubResult.content);
-  // } catch (error) {
-  //   console.error("GitHub 仓库分析失败:", error);
-  // }
+  try {
+    console.log("\n1.2 GitHub 仓库分析特定文件：");
+    console.log("正在分析文件...");
+    const githubResult = await githubIngest.analyzeFromUrl(
+      "https://github.com/Gijela/gitingest-ts", // 项目第一层作为分析的根目录
+      {
+        branch: "dev",
+        maxFileSize: 500 * 1024, // 500KB
+        targetPaths: ['examples/test/index.ts', 'examples/scanner.ts'] // 分析指定入口文件, 会递归分析出所有的依赖文件
+      }
+    );
+    console.log("GitHub 仓库分析完成！");
+    console.log("\n分析结果:");
+    console.log("- 文件数:", githubResult.metadata.files);
+    console.log("- 总大小:", githubResult.metadata.size, "bytes");
+    console.log("\n仓库特定文件扫描出来的的文件树(包含依赖文件)：");
+    console.log(githubResult.tree);
+  } catch (error) {
+    console.error("GitHub 仓库分析失败:", error);
+  }
 }
 
 test().catch(console.error); 
