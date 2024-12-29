@@ -18,7 +18,7 @@
     "build": "tsup src/index.ts --format esm --dts --clean",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",
-    "test:example": "tsx examples/test.ts"
+    "test:example": "tsx examples/scanner.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",

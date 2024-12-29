@@ -11,11 +11,14 @@ async function test() {
   });
 
   try {
-    // 测试分析特定目录
+    // // 测试分析特定目录
     // console.log("\n1.1 分析特定目录：");
     // console.log("正在分析目录...");
-    // const dirResult = await localIngest.analyzeFromDirectory("./src", {
-    //   targetPaths: ['test']
+    // // const dirResult = await localIngest.analyzeFromDirectory("./", {
+    // //   excludePatterns: ['*.test.ts', '*.spec.ts', 'dist/**']
+    // // });
+    // const dirResult = await localIngest.analyzeFromDirectory("./", {
+    //   excludePatterns: ['.png', '.jpg', 'public/**', 'dist/**']
     // });
     // console.log("分析完成！");
     // console.log("\n分析结果:");
