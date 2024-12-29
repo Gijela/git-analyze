@@ -218,7 +218,7 @@ router.get('/:owner/:repo', async (ctx) => {
     ctx.status = 500;
     ctx.body = {
       success: false,
-      error: error.message
+      // error: error.message
     };
   }
 });

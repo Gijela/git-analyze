@@ -19,7 +19,8 @@
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",
     "test:example": "tsx examples/scanner.ts",
-    "web": "tsx examples/web/server.ts"
+    "web:dev": "tsx examples/web/server.ts",
+    "web:build": "tsup examples/web/server.ts --format esm --dts --clean"
   },
   "dependencies": {
     "@koa/cors": "^5.0.0",

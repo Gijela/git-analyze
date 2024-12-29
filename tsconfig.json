@@ -12,8 +12,8 @@
     "declarationMap": true,
     "resolveJsonModule": true,
     "noEmit": false,
-    "rootDir": "src"
+    "rootDir": "."
   },
-  "include": ["src/**/*", "examples/test/test.ts"],
+  "include": ["src/**/*", "examples/**/*"],
   "exclude": ["node_modules", "dist"]
 }
