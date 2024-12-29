@@ -22,11 +22,16 @@
     "analyze:complexity": "tsx examples/analyze-complexity.ts",
     "analyze:changes": "tsx examples/analyze-changes.ts",
     "analyze:project": "tsx examples/analyze-project.ts",
-    "analyze:quality": "tsx examples/analyze-quality.ts"
+    "analyze:quality": "tsx examples/analyze-quality.ts",
+    "analyze:security": "tsx examples/analyze-security.ts",
+    "analyze:performance": "tsx examples/analyze-performance.ts",
+    "analyze:intelligent": "tsx examples/analyze-intelligent.ts"
   },
   "dependencies": {
+    "@types/js-yaml": "^4.0.9",
     "dotenv": "^16.4.7",
     "glob": "^11.0.0",
+    "js-yaml": "^4.1.0",
     "simple-git": "^3.27.0"
   },
   "devDependencies": {

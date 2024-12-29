@@ -4,6 +4,8 @@ import { promisify } from 'util';
 import type { DependencyGraph, DependencyNode } from './dependency';
 import { ComplexityAnalyzer, FileComplexity } from './complexity';
 import { ChangeAnalyzer, ChangeAnalysis } from './change-analyzer';
+import { CommentAnalyzer, CommentAnalysis } from './comment-analyzer';
+import { LearningPathGenerator } from './learning-path';
 
 const writeFile = promisify(fs.writeFile);
 const mkdir = promisify(fs.mkdir);
@@ -15,14 +17,24 @@ interface ReportOptions {
   excludeNodeModules?: boolean;
   includeComplexity?: boolean;
   includeChanges?: boolean;
+  includeComments?: boolean;
+  includeLearningPath?: boolean;
   since?: string;
+}
+
+interface CommentItem {
+  file: string;
+  line: number;
+  content: string;
 }
 
 export class DependencyReporter {
   private complexityAnalyzer: ComplexityAnalyzer;
   private changeAnalyzer: ChangeAnalyzer;
+  private commentAnalyzer: CommentAnalyzer;
   private complexityMetrics: Map<string, FileComplexity> = new Map();
   private changeAnalysis?: ChangeAnalysis;
+  private commentAnalyses: Map<string, CommentAnalysis> = new Map();
 
   constructor(
     private graph: DependencyGraph,
@@ -30,6 +42,7 @@ export class DependencyReporter {
   ) {
     this.complexityAnalyzer = new ComplexityAnalyzer();
     this.changeAnalyzer = new ChangeAnalyzer(rootDir);
+    this.commentAnalyzer = new CommentAnalyzer();
   }
 
   /**
@@ -44,6 +57,10 @@ export class DependencyReporter {
 
     if (options.includeChanges) {
       this.changeAnalysis = await this.changeAnalyzer.analyze(options.since);
+    }
+
+    if (options.includeComments) {
+      await this.analyzeComments();
     }
 
     switch (options.format) {
@@ -78,6 +95,21 @@ export class DependencyReporter {
   }
 
   /**
+   * 分析所有文件的注释
+   */
+  private async analyzeComments(): Promise<void> {
+    for (const [filePath] of this.graph.nodes) {
+      try {
+        const absolutePath = path.resolve(this.rootDir, filePath);
+        const analysis = await this.commentAnalyzer.analyzeFile(absolutePath);
+        this.commentAnalyses.set(filePath, analysis);
+      } catch (error) {
+        console.error(`Error analyzing comments for ${filePath}:`, error);
+      }
+    }
+  }
+
+  /**
    * 生成JSON格式报告
    */
   private async generateJsonReport(options: ReportOptions): Promise<void> {
@@ -87,7 +119,8 @@ export class DependencyReporter {
         imports: Array.from(node.dependencies),
         exports: options.includeExports ? node.exports : undefined,
         complexity: options.includeComplexity ? this.complexityMetrics.get(key) : undefined,
-        changes: options.includeChanges ? this.changeAnalysis?.files.find(f => f.filePath === key) : undefined
+        changes: options.includeChanges ? this.changeAnalysis?.files.find(f => f.filePath === key) : undefined,
+        comments: options.includeComments ? this.commentAnalyses.get(key) : undefined
       })),
       cycles: this.graph.cycles,
       summary: this.generateSummary(options),
@@ -96,7 +129,9 @@ export class DependencyReporter {
         riskAreas: this.changeAnalysis?.riskAreas,
         contributors: this.changeAnalysis?.contributors,
         timeline: this.changeAnalysis?.timeline
-      } : undefined
+      } : undefined,
+      comments: options.includeComments ? this.generateCommentsSummary() : undefined,
+      learningPath: options.includeLearningPath ? this.generateLearningPath() : undefined
     };
 
     await writeFile(
@@ -116,6 +151,8 @@ export class DependencyReporter {
   <title>依赖关系报告</title>
   <style>
     ${this.getStyles()}
+    ${this.getCommentStyles()}
+    ${this.getLearningPathStyles()}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
@@ -155,6 +192,10 @@ export class DependencyReporter {
   </div>
   ` : ''}
 
+  ${options.includeComments ? this.generateHtmlComments() : ''}
+
+  ${options.includeLearningPath ? this.generateHtmlLearningPath() : ''}
+
   ${options.includeChanges && this.changeAnalysis ? `
   <div class="section">
     <h2>变更时间线</h2>
@@ -167,7 +208,7 @@ export class DependencyReporter {
 </body>
 </html>`;
 
-    await writeFile(
+    return writeFile(
       path.join(options.outputDir, 'dependency-report.html'),
       html
     );
@@ -636,6 +677,404 @@ export class DependencyReporter {
       }
       .warning .progress-bar-fill { background: #fdcb6e; }
       .critical .progress-bar-fill { background: #d63031; }
+    `;
+  }
+
+  private generateCommentsSummary(): object {
+    const allAnalyses = Array.from(this.commentAnalyses.values());
+
+    const totalTodos = allAnalyses.reduce((sum, analysis) => sum + analysis.summary.todoCount, 0);
+    const totalFixmes = allAnalyses.reduce((sum, analysis) => sum + analysis.summary.fixmeCount, 0);
+    const totalDocs = allAnalyses.reduce((sum, analysis) => sum + analysis.summary.docCount, 0);
+    const totalImportant = allAnalyses.reduce((sum, analysis) => sum + analysis.summary.importantCount, 0);
+
+    const avgCoverage = allAnalyses.reduce((sum, analysis) => sum + analysis.coverage.ratio, 0) / allAnalyses.length;
+
+    return {
+      total: {
+        todos: totalTodos,
+        fixmes: totalFixmes,
+        docComments: totalDocs,
+        importantNotes: totalImportant
+      },
+      coverage: {
+        average: avgCoverage,
+        files: Array.from(this.commentAnalyses.entries()).map(([file, analysis]) => ({
+          file,
+          ratio: analysis.coverage.ratio
+        }))
+      },
+      todos: Array.from(this.commentAnalyses.entries())
+        .flatMap(([file, analysis]) =>
+          analysis.todos.map(todo => ({ ...todo, file }))
+        ),
+      fixmes: Array.from(this.commentAnalyses.entries())
+        .flatMap(([file, analysis]) =>
+          analysis.fixmes.map(fixme => ({ ...fixme, file }))
+        ),
+      importantNotes: Array.from(this.commentAnalyses.entries())
+        .flatMap(([file, analysis]) =>
+          analysis.importantNotes.map(note => ({ ...note, file }))
+        )
+    };
+  }
+
+  private generateHtmlComments(): string {
+    if (this.commentAnalyses.size === 0) return '';
+
+    const summary = this.generateCommentsSummary() as any;
+
+    return `
+      <div class="section">
+        <h2>注释分析</h2>
+        
+        <div class="summary-grid">
+          <div class="summary-card">
+            <h3>待办事项</h3>
+            <p class="large-number">${summary.total.todos}</p>
+          </div>
+          <div class="summary-card">
+            <h3>需修复项</h3>
+            <p class="large-number">${summary.total.fixmes}</p>
+          </div>
+          <div class="summary-card">
+            <h3>文档注释</h3>
+            <p class="large-number">${summary.total.docComments}</p>
+          </div>
+          <div class="summary-card">
+            <h3>重要注释</h3>
+            <p class="large-number">${summary.total.importantNotes}</p>
+          </div>
+        </div>
+
+        <div class="subsection">
+          <h3>文档覆盖率</h3>
+          <div class="coverage-chart">
+            <div class="progress-bar">
+              <div class="progress-bar-fill" style="width: ${summary.coverage.average * 100}%"></div>
+            </div>
+            <p>平均覆盖率: ${(summary.coverage.average * 100).toFixed(1)}%</p>
+          </div>
+        </div>
+
+        ${summary.todos.length > 0 ? `
+          <div class="subsection">
+            <h3>待办事项列表</h3>
+            <ul class="todo-list">
+              ${summary.todos.map((todo: CommentItem) => `
+                <li>
+                  <span class="file-name">${todo.file}</span>
+                  <span class="line-number">行 ${todo.line}</span>
+                  <span class="content">${todo.content}</span>
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        ` : ''}
+
+        ${summary.fixmes.length > 0 ? `
+          <div class="subsection">
+            <h3>需修复项列表</h3>
+            <ul class="fixme-list">
+              ${summary.fixmes.map((fixme: CommentItem) => `
+                <li>
+                  <span class="file-name">${fixme.file}</span>
+                  <span class="line-number">行 ${fixme.line}</span>
+                  <span class="content">${fixme.content}</span>
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        ` : ''}
+
+        ${summary.importantNotes.length > 0 ? `
+          <div class="subsection">
+            <h3>重要注释列表</h3>
+            <ul class="important-list">
+              ${summary.importantNotes.map((note: CommentItem) => `
+                <li>
+                  <span class="file-name">${note.file}</span>
+                  <span class="line-number">行 ${note.line}</span>
+                  <span class="content">${note.content}</span>
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        ` : ''}
+      </div>
+    `;
+  }
+
+  private getCommentStyles(): string {
+    return `
+      .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        margin: 20px 0;
+      }
+
+      .summary-card {
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+      }
+
+      .large-number {
+        font-size: 2em;
+        font-weight: bold;
+        color: #0984e3;
+        margin: 10px 0;
+      }
+
+      .coverage-chart {
+        margin: 20px 0;
+      }
+
+      .todo-list, .fixme-list, .important-list {
+        list-style: none;
+        padding: 0;
+      }
+
+      .todo-list li, .fixme-list li, .important-list li {
+        background: #f8f9fa;
+        margin: 10px 0;
+        padding: 10px;
+        border-radius: 4px;
+        display: grid;
+        grid-template-columns: 200px 100px 1fr;
+        gap: 10px;
+      }
+
+      .file-name {
+        color: #0984e3;
+        font-family: monospace;
+      }
+
+      .line-number {
+        color: #666;
+      }
+
+      .content {
+        color: #2d3436;
+      }
+
+      .fixme-list li {
+        border-left: 4px solid #d63031;
+      }
+
+      .todo-list li {
+        border-left: 4px solid #fdcb6e;
+      }
+
+      .important-list li {
+        border-left: 4px solid #00b894;
+      }
+    `;
+  }
+
+  private generateLearningPath(): object {
+    const pathGenerator = new LearningPathGenerator(
+      this.graph,
+      this.complexityMetrics,
+      this.commentAnalyses,
+      this.changeAnalysis
+    );
+    return pathGenerator.generate();
+  }
+
+  private generateHtmlLearningPath(): string {
+    const learningPath = this.generateLearningPath() as any;
+
+    return `
+      <div class="section">
+        <h2>学习路径</h2>
+        
+        <div class="learning-stages">
+          ${learningPath.stages.map((stage: any, index: number) => `
+            <div class="learning-stage">
+              <h3>${index + 1}. ${stage.name}</h3>
+              <p class="stage-description">${stage.description}</p>
+              <p class="stage-time">预计耗时: ${stage.estimatedTime}</p>
+              
+              <div class="stage-files">
+                ${stage.files.map((file: string) => {
+      const node = learningPath.nodes.find((n: any) => n.file === file);
+      return node ? `
+                    <div class="file-card">
+                      <h4 class="file-name">${file}</h4>
+                      <p class="file-description">${node.description}</p>
+                      
+                      ${node.complexity ? `
+                        <div class="metric">
+                          <span>复杂度:</span>
+                          <div class="progress-bar">
+                            <div class="progress-bar-fill" style="width: ${Math.min(100, node.complexity * 5)}%"></div>
+                          </div>
+                        </div>
+                      ` : ''}
+                      
+                      ${node.docCoverage ? `
+                        <div class="metric">
+                          <span>文档覆盖率:</span>
+                          <div class="progress-bar">
+                            <div class="progress-bar-fill" style="width: ${node.docCoverage * 100}%"></div>
+                          </div>
+                        </div>
+                      ` : ''}
+                      
+                      ${node.learningPoints.length > 0 ? `
+                        <div class="learning-points">
+                          <h5>学习要点:</h5>
+                          <ul>
+                            ${node.learningPoints.map((point: string) => `
+                              <li>${point}</li>
+                            `).join('')}
+                          </ul>
+                        </div>
+                      ` : ''}
+                    </div>
+                  ` : '';
+    }).join('')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+
+        <div class="recommendations">
+          <h3>学习建议</h3>
+          <ul>
+            ${learningPath.recommendations.map((rec: any) => `
+              <li>
+                <span class="file-name">${rec.file}</span>
+                <span class="reason">${rec.reason}</span>
+              </li>
+            `).join('')}
+          </ul>
+        </div>
+      </div>
+    `;
+  }
+
+  private getLearningPathStyles(): string {
+    return `
+      .learning-stages {
+        display: flex;
+        flex-direction: column;
+        gap: 30px;
+        margin: 20px 0;
+      }
+
+      .learning-stage {
+        background: #fff;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+      }
+
+      .stage-description {
+        color: #666;
+        margin: 10px 0;
+      }
+
+      .stage-time {
+        color: #0984e3;
+        font-weight: bold;
+      }
+
+      .stage-files {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+        gap: 20px;
+        margin-top: 20px;
+      }
+
+      .file-card {
+        background: #f8f9fa;
+        padding: 15px;
+        border-radius: 6px;
+        border-left: 4px solid #0984e3;
+      }
+
+      .file-name {
+        color: #0984e3;
+        margin: 0 0 10px 0;
+        font-family: monospace;
+      }
+
+      .file-description {
+        color: #2d3436;
+        margin: 10px 0;
+      }
+
+      .metric {
+        margin: 10px 0;
+      }
+
+      .metric span {
+        display: block;
+        margin-bottom: 5px;
+        color: #666;
+      }
+
+      .learning-points {
+        margin-top: 15px;
+      }
+
+      .learning-points h5 {
+        color: #2d3436;
+        margin: 0 0 10px 0;
+      }
+
+      .learning-points ul {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+      }
+
+      .learning-points li {
+        padding: 5px 0;
+        color: #666;
+        position: relative;
+        padding-left: 20px;
+      }
+
+      .learning-points li:before {
+        content: "•";
+        color: #0984e3;
+        position: absolute;
+        left: 0;
+        font-weight: bold;
+      }
+
+      .recommendations {
+        margin-top: 30px;
+      }
+
+      .recommendations ul {
+        list-style: none;
+        padding: 0;
+      }
+
+      .recommendations li {
+        display: flex;
+        align-items: center;
+        padding: 10px;
+        background: #f8f9fa;
+        margin: 10px 0;
+        border-radius: 4px;
+      }
+
+      .recommendations .file-name {
+        min-width: 200px;
+        margin: 0;
+      }
+
+      .recommendations .reason {
+        color: #666;
+      }
     `;
   }
 } 
