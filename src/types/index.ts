@@ -2,6 +2,7 @@ export interface AnalyzeOptions {
   maxFileSize?: number;
   includePatterns?: string[];
   excludePatterns?: string[];
+  targetPaths?: string[];
   branch?: string;
   commit?: string;
 }

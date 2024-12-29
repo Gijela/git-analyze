@@ -7,6 +7,7 @@ interface ScanOptions {
   maxFileSize?: number;
   includePatterns?: string[];
   excludePatterns?: string[];
+  targetPaths?: string[];
 }
 
 const BINARY_FILE_TYPES = [
@@ -26,9 +27,31 @@ export class FileScanner {
     }
 
     try {
+      // 如果指定了targetPaths，只扫描指定的文件
+      if (options.targetPaths && options.targetPaths.length > 0) {
+        const results = await Promise.all(
+          options.targetPaths.map(async (targetPath) => {
+            try {
+              const fullPath = `${path}/${targetPath}`;
+              return await this.processFile(path, targetPath, options);
+            } catch (error) {
+              console.warn(`Warning: Failed to process ${targetPath}: ${error}`);
+              return null;
+            }
+          })
+        );
+
+        return results.filter((file): file is FileInfo => file !== null);
+      }
+
+      // 如果没有指定targetPaths，扫描所有文件
       const files = await glob('**/*', {
         cwd: path,
-        ignore: [...(options.excludePatterns || []), '**/node_modules/**', '**/.git/**'],
+        ignore: [
+          ...(options.excludePatterns || []),
+          '**/node_modules/**',
+          '**/.git/**'
+        ],
         nodir: true,
         absolute: false,
         windowsPathsNoEscape: true

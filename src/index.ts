@@ -146,7 +146,8 @@ export class GitIngest {
       const files = await this.scanner.scanDirectory(path, {
         maxFileSize: options?.maxFileSize || this.config.defaultMaxFileSize,
         includePatterns: options?.includePatterns || this.config.defaultPatterns?.include,
-        excludePatterns: options?.excludePatterns || this.config.defaultPatterns?.exclude
+        excludePatterns: options?.excludePatterns || this.config.defaultPatterns?.exclude,
+        targetPaths: options?.targetPaths
       });
 
       if (files.length === 0) {
