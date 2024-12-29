@@ -34,8 +34,10 @@ async function test() {
     console.log("\n分析结果:");
     console.log("- 文件数:", fileResult.metadata.files);
     console.log("- 总大小:", fileResult.metadata.size, "bytes");
-    console.log("\n文件内容:");
-    console.log(fileResult.content);
+    // console.log("\n文件内容:");
+    // console.log(fileResult.content);
+    console.log("\n特定文件扫描出来的的文件树(包含依赖文件)：");
+    console.log(fileResult.tree);
   } catch (error) {
     console.error("本地目录分析失败:", error);
   }
