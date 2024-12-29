@@ -31,4 +31,8 @@ export interface GitIngestConfig {
     exclude?: string[];
   };
   keepTempFiles?: boolean;
+  customDomainMap?: {
+    targetDomain: string;
+    originalDomain: string;
+  };
 } 

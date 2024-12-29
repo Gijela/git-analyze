@@ -22,25 +22,31 @@ async function test() {
     console.error("本地目录分析失败:", error);
   }
 
-  // 2. 测试 GitHub 仓库分析
-  console.log("\n测试 GitHub 仓库分析...");
+  // 2. 测试 GitHub 仓库分析（使用自定义域名）
+  console.log("\n测试 GitHub 仓库分析（自定义域名）...");
   const githubIngest = new GitIngest({
     tempDir: "./temp-test",
-    keepTempFiles: false, // 不保留临时文件
+    keepTempFiles: false,
     defaultPatterns: {
       exclude: ["**/node_modules/**", "**/.git/**", "**/dist/**"],
     },
+    customDomainMap: {
+      targetDomain: "github101.com",
+      originalDomain: "github.com"
+    }
   });
 
   try {
+    // 使用自定义域名访问
     const githubResult = await githubIngest.analyzeFromUrl(
-      "https://github.com/Gijela/gitingest-ts",
+      "https://github101.com/Gijela/gitingest-ts",
       {
         branch: "main",
         maxFileSize: 500 * 1024, // 500KB
       }
     );
     console.log("\nGitHub 仓库分析结果:");
+    console.log(githubResult.summary); // 这里会显示自定义域名的信息
     console.log("文件数:", githubResult.metadata.files);
     console.log("总大小:", githubResult.metadata.size, "bytes");
     console.log("Token数:", githubResult.metadata.tokens);

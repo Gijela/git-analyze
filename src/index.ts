@@ -42,15 +42,43 @@ export class GitIngest {
     }
   }
 
+  // 检查URL是否使用自定义域名，如果是则转换为原始GitHub URL
+  private transformCustomDomainUrl(url: string): string {
+    if (!this.config.customDomainMap) {
+      return url;
+    }
+
+    const { targetDomain, originalDomain } = this.config.customDomainMap;
+    if (url.includes(targetDomain)) {
+      return url.replace(targetDomain, originalDomain);
+    }
+
+    return url;
+  }
+
+  // 检查URL是否匹配自定义域名
+  private isCustomDomainUrl(url: string): boolean {
+    if (!this.config.customDomainMap) {
+      return false;
+    }
+
+    return url.includes(this.config.customDomainMap.targetDomain);
+  }
+
   async analyzeFromUrl(
     url: string,
     options?: AnalyzeOptions
   ): Promise<AnalysisResult> {
-    if (!url) {
+    // 检查是否是自定义域名URL
+    const isCustomDomain = this.isCustomDomainUrl(url);
+    // 转换URL
+    const githubUrl = this.transformCustomDomainUrl(url);
+
+    if (!githubUrl) {
       throw new ValidationError('URL is required');
     }
 
-    if (!url.match(/^https?:\/\//)) {
+    if (!githubUrl.match(/^https?:\/\//)) {
       throw new ValidationError('Invalid URL format');
     }
 
@@ -68,7 +96,7 @@ export class GitIngest {
       }
 
       // 克隆仓库
-      await this.git.clone(url, workDir);
+      await this.git.clone(githubUrl, workDir);
 
       // 如果指定了分支,切换到对应分支
       if (options?.branch) {
@@ -81,6 +109,11 @@ export class GitIngest {
       // 如果不保留临时文件，则清理
       if (!this.config.keepTempFiles) {
         await this.cleanupTempDir(workDir);
+      }
+
+      // 如果是自定义域名访问，添加额外信息
+      if (isCustomDomain) {
+        result.summary = `通过自定义域名 ${this.config.customDomainMap?.targetDomain} 访问\n原始仓库: ${githubUrl}\n\n${result.summary}`;
       }
 
       return result;

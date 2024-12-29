@@ -30,12 +30,12 @@ export class FileScanner {
         cwd: path,
         ignore: [...(options.excludePatterns || []), '**/node_modules/**', '**/.git/**'],
         nodir: true,
-        absolute: true,
+        absolute: false,
         windowsPathsNoEscape: true
       });
 
       const results = await Promise.all(
-        files.map(file => this.processFile(file, options))
+        files.map(file => this.processFile(path, file, options))
       );
 
       return results.filter((file): file is FileInfo => file !== null);
@@ -45,31 +45,33 @@ export class FileScanner {
   }
 
   private async processFile(
-    path: string,
+    basePath: string,
+    relativePath: string,
     options: ScanOptions
   ): Promise<FileInfo | null> {
     try {
       // 检查文件类型
-      const ext = path.toLowerCase().split('.').pop();
+      const ext = relativePath.toLowerCase().split('.').pop();
       if (ext && BINARY_FILE_TYPES.includes(`.${ext}`)) {
         return null;
       }
 
-      const stats = await stat(path);
+      const fullPath = `${basePath}/${relativePath}`;
+      const stats = await stat(fullPath);
 
       if (options.maxFileSize && stats.size > options.maxFileSize) {
         return null;
       }
 
-      const content = await readFile(path, 'utf-8');
+      const content = await readFile(fullPath, 'utf-8');
 
       return {
-        path,
+        path: relativePath,
         content,
         size: stats.size
       };
     } catch (error) {
-      throw new FileProcessError(path, (error as Error).message);
+      throw new FileProcessError(relativePath, (error as Error).message);
     }
   }
 } 
