@@ -18,15 +18,25 @@
     "build": "tsup src/index.ts --format esm --dts --clean",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",
-    "test:example": "tsx examples/scanner.ts"
+    "test:example": "tsx examples/scanner.ts",
+    "web": "tsx examples/web/server.ts"
   },
   "dependencies": {
+    "@koa/cors": "^5.0.0",
+    "@koa/router": "^13.1.0",
+    "@types/koa": "^2.15.0",
+    "@types/koa__router": "^12.0.4",
     "dotenv": "^16.4.7",
     "glob": "^11.0.0",
+    "koa": "^2.15.3",
+    "koa-body": "^6.0.1",
+    "koa-static": "^5.0.0",
     "simple-git": "^3.27.0"
   },
   "devDependencies": {
     "@types/dotenv": "^8.2.3",
+    "@types/koa-static": "^4.0.4",
+    "@types/koa__cors": "^5.0.0",
     "@types/node": "^22.10.2",
     "@typescript-eslint/eslint-plugin": "^8.18.2",
     "@typescript-eslint/parser": "^8.18.2",
