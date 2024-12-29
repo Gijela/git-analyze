@@ -133,6 +133,96 @@ router.post('/analyze/github', async (ctx) => {
   };
 });
 
+// 添加新的路由处理 /:owner/:repo 格式的请求
+router.get('/:owner/:repo', async (ctx) => {
+  const { owner, repo } = ctx.params;
+  const githubUrl = `https://github.com/${owner}/${repo}`;
+
+  try {
+    // 分析仓库
+    const result = await ingest.analyzeFromUrl(githubUrl, {
+      maxFileSize: 500 * 1024 // 500KB
+    });
+
+    // 渲染 HTML 页面
+    const html = `
+    <!DOCTYPE html>
+    <html lang="zh-CN">
+    <head>
+      <meta charset="UTF-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>${owner}/${repo} - GitIngest 分析结果</title>
+      <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+      <style>
+        .tree-view { font-family: monospace; white-space: pre; }
+        .code-block { font-family: monospace; white-space: pre-wrap; max-height: 400px; overflow-y: auto; }
+      </style>
+    </head>
+    <body class="bg-gray-100">
+      <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-center mb-8">${owner}/${repo}</h1>
+        
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+          <!-- 基本信息 -->
+          <div class="mb-6">
+            <h3 class="text-xl font-semibold mb-2">基本信息</h3>
+            <div class="bg-gray-50 p-4 rounded">
+              文件数: ${result.metadata.files}
+              总大小: ${result.metadata.size} bytes
+              预估Token数: ${result.metadata.tokens}
+            </div>
+          </div>
+
+          <!-- 文件树 -->
+          <div class="mb-6">
+            <h3 class="text-xl font-semibold mb-2">文件树</h3>
+            <div class="bg-gray-50 p-4 rounded tree-view">${result.tree}</div>
+          </div>
+
+          <!-- 项目概要 -->
+          <div class="mb-6">
+            <h3 class="text-xl font-semibold mb-2">项目概要</h3>
+            <div class="bg-gray-50 p-4 rounded whitespace-pre-line">${result.summary}</div>
+          </div>
+
+          <!-- 文件内容 -->
+          <div>
+            <h3 class="text-xl font-semibold mb-2">文件内容</h3>
+            <div class="space-y-4">
+              ${result.content
+        .split(/File: /)
+        .filter(Boolean)
+        .map(section => {
+          const lines = section.split('\n');
+          const filePath = lines[0].trim();
+          const content = lines.slice(2).join('\n').trim();
+          return `
+                    <div class="bg-gray-50 p-4 rounded">
+                      <div class="font-semibold mb-2 text-blue-600">${filePath}</div>
+                      <div class="code-block bg-gray-100 p-4 rounded">${content}</div>
+                    </div>
+                  `;
+        })
+        .join('')}
+            </div>
+          </div>
+        </div>
+      </div>
+    </body>
+    </html>
+    `;
+
+    ctx.type = 'html';
+    ctx.body = html;
+  } catch (error) {
+    ctx.status = 500;
+    ctx.body = {
+      success: false,
+      error: error.message
+    };
+  }
+});
+
 // 健康检查接口
 router.get('/health', (ctx) => {
   ctx.body = {
