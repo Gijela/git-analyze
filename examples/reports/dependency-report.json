@@ -1,0 +1,267 @@
+{
+  "nodes": [
+    {
+      "file": "src/index.ts",
+      "imports": [
+        "/Users/gijela/Desktop/github-repo/gitingest-ts/src/core/git.ts",
+        "/Users/gijela/Desktop/github-repo/gitingest-ts/src/core/scanner.ts",
+        "/Users/gijela/Desktop/github-repo/gitingest-ts/src/utils/index.ts",
+        "/Users/gijela/Desktop/github-repo/gitingest-ts/src/core/errors.ts"
+      ],
+      "exports": [
+        "GitIngest",
+        "GitIngestError",
+        "ValidationError",
+        "GitOperationError"
+      ],
+      "complexity": {
+        "filePath": "/Users/gijela/Desktop/github-repo/gitingest-ts/src/index.ts",
+        "metrics": {
+          "cyclomaticComplexity": 17,
+          "maintainabilityIndex": 30.751744896047057,
+          "linesOfCode": 121,
+          "commentLines": 8,
+          "commentRatio": 0.06611570247933884
+        },
+        "functions": []
+      },
+      "changes": {
+        "filePath": "src/index.ts",
+        "additions": 152,
+        "deletions": 0,
+        "changes": 152,
+        "complexity": {
+          "cyclomaticComplexity": 17,
+          "maintainabilityIndex": 30.751744896047057,
+          "linesOfCode": 121,
+          "commentLines": 8,
+          "commentRatio": 0.06611570247933884
+        },
+        "impactScore": 28.94666666666667,
+        "commitHistory": [
+          {
+            "hash": "c0be4e6a8e8918cb77fe08a0b864aaca52afb9f5",
+            "author": "Gijela",
+            "date": "Sun Dec 29 02:36:26 2024 +0800",
+            "message": "feat: Initialize GitIngest TypeScript SDK with core functionality, including Git repository analysis, file scanning, and metadata generation. Add configuration options, error handling, and utility functions. Include example usage and tests for validation. Add .gitignore, package.json, and pnpm-lock.yaml for project setup.",
+            "changes": {
+              "additions": 0,
+              "deletions": 0
+            }
+          }
+        ]
+      }
+    },
+    {
+      "file": "/Users/gijela/Desktop/github-repo/gitingest-ts/src/core/git.ts",
+      "imports": [
+        "/Users/gijela/Desktop/github-repo/gitingest-ts/src/core/errors.ts",
+        "/Users/gijela/Desktop/github-repo/gitingest-ts/src/utils/env.ts"
+      ],
+      "exports": [
+        "GitHandler"
+      ],
+      "complexity": {
+        "filePath": "/Users/gijela/Desktop/github-repo/gitingest-ts/src/core/git.ts",
+        "metrics": {
+          "cyclomaticComplexity": 6,
+          "maintainabilityIndex": 55.89464558890358,
+          "linesOfCode": 36,
+          "commentLines": 1,
+          "commentRatio": 0.027777777777777776
+        },
+        "functions": []
+      }
+    },
+    {
+      "file": "/Users/gijela/Desktop/github-repo/gitingest-ts/src/core/errors.ts",
+      "imports": [],
+      "exports": [
+        "GitIngestError",
+        "GitOperationError",
+        "FileProcessError",
+        "ValidationError"
+      ],
+      "complexity": {
+        "filePath": "/Users/gijela/Desktop/github-repo/gitingest-ts/src/core/errors.ts",
+        "metrics": {
+          "cyclomaticComplexity": 1,
+          "maintainabilityIndex": 66.66405143179139,
+          "linesOfCode": 24,
+          "commentLines": 0,
+          "commentRatio": 0
+        },
+        "functions": []
+      }
+    },
+    {
+      "file": "/Users/gijela/Desktop/github-repo/gitingest-ts/src/utils/env.ts",
+      "imports": [],
+      "exports": [
+        "Env",
+        "env"
+      ],
+      "complexity": {
+        "filePath": "/Users/gijela/Desktop/github-repo/gitingest-ts/src/utils/env.ts",
+        "metrics": {
+          "cyclomaticComplexity": 1,
+          "maintainabilityIndex": 74.35545053165093,
+          "linesOfCode": 13,
+          "commentLines": 3,
+          "commentRatio": 0.23076923076923078
+        },
+        "functions": []
+      }
+    },
+    {
+      "file": "/Users/gijela/Desktop/github-repo/gitingest-ts/src/core/scanner.ts",
+      "imports": [
+        "/Users/gijela/Desktop/github-repo/gitingest-ts/src/types/index.ts",
+        "/Users/gijela/Desktop/github-repo/gitingest-ts/src/core/errors.ts"
+      ],
+      "exports": [
+        "FileScanner"
+      ],
+      "complexity": {
+        "filePath": "/Users/gijela/Desktop/github-repo/gitingest-ts/src/core/scanner.ts",
+        "metrics": {
+          "cyclomaticComplexity": 6,
+          "maintainabilityIndex": 46.961443387410114,
+          "linesOfCode": 63,
+          "commentLines": 1,
+          "commentRatio": 0.015873015873015872
+        },
+        "functions": []
+      }
+    },
+    {
+      "file": "/Users/gijela/Desktop/github-repo/gitingest-ts/src/types/index.ts",
+      "imports": [],
+      "exports": [
+        "AnalyzeOptions",
+        "FileInfo",
+        "AnalysisResult",
+        "GitIngestConfig"
+      ],
+      "complexity": {
+        "filePath": "/Users/gijela/Desktop/github-repo/gitingest-ts/src/types/index.ts",
+        "metrics": {
+          "cyclomaticComplexity": 1,
+          "maintainabilityIndex": 63.74304234916554,
+          "linesOfCode": 30,
+          "commentLines": 0,
+          "commentRatio": 0
+        },
+        "functions": []
+      }
+    },
+    {
+      "file": "/Users/gijela/Desktop/github-repo/gitingest-ts/src/utils/index.ts",
+      "imports": [
+        "/Users/gijela/Desktop/github-repo/gitingest-ts/src/types/index.ts"
+      ],
+      "exports": [
+        "estimateTokens",
+        "generateTree",
+        "generateSummary"
+      ],
+      "complexity": {
+        "filePath": "/Users/gijela/Desktop/github-repo/gitingest-ts/src/utils/index.ts",
+        "metrics": {
+          "cyclomaticComplexity": 11,
+          "maintainabilityIndex": 45.84945185581896,
+          "linesOfCode": 60,
+          "commentLines": 0,
+          "commentRatio": 0
+        },
+        "functions": [
+          {
+            "name": "estimateTokens",
+            "metrics": {
+              "cyclomaticComplexity": 1,
+              "maintainabilityIndex": 89.18858533542493,
+              "linesOfCode": 3,
+              "commentLines": 0,
+              "commentRatio": 0
+            }
+          },
+          {
+            "name": "generateTree",
+            "metrics": {
+              "cyclomaticComplexity": 8,
+              "maintainabilityIndex": 57.41959438616252,
+              "linesOfCode": 30,
+              "commentLines": 0,
+              "commentRatio": 0
+            }
+          },
+          {
+            "name": "stringify",
+            "metrics": {
+              "cyclomaticComplexity": 5,
+              "maintainabilityIndex": 67.43304654823795,
+              "linesOfCode": 15,
+              "commentLines": 0,
+              "commentRatio": 0
+            }
+          },
+          {
+            "name": "generateSummary",
+            "metrics": {
+              "cyclomaticComplexity": 3,
+              "maintainabilityIndex": 68.24051391733413,
+              "linesOfCode": 16,
+              "commentLines": 0,
+              "commentRatio": 0
+            }
+          },
+          {
+            "name": "formatSize",
+            "metrics": {
+              "cyclomaticComplexity": 2,
+              "maintainabilityIndex": 74.73319073367529,
+              "linesOfCode": 10,
+              "commentLines": 0,
+              "commentRatio": 0
+            }
+          }
+        ]
+      }
+    }
+  ],
+  "cycles": [],
+  "summary": {
+    "totalFiles": 7,
+    "totalDependencies": 9,
+    "avgDependencies": 1.2857142857142858,
+    "maxDependencies": 4,
+    "circularDependencies": 0
+  },
+  "changes": {
+    "hotspots": [
+      "src/index.ts"
+    ],
+    "riskAreas": [
+      "src/index.ts",
+      "src/utils/index.ts",
+      "src/core/scanner.ts",
+      "src/core/git.ts",
+      "examples/test.ts",
+      "examples/basic.ts",
+      "src/types/index.ts"
+    ],
+    "contributors": [
+      {
+        "name": "Gijela",
+        "commits": 2,
+        "changes": 3912
+      }
+    ],
+    "timeline": [
+      {
+        "date": "2024-12-29",
+        "changes": 3912
+      }
+    ]
+  }
+}
