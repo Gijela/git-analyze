@@ -5,6 +5,7 @@ async function test() {
   console.log("测试本地目录分析...");
   const localIngest = new GitIngest({
     tempDir: "./temp-test",
+    keepTempFiles: false, // 不保留临时文件
   });
 
   try {
@@ -25,6 +26,7 @@ async function test() {
   console.log("\n测试 GitHub 仓库分析...");
   const githubIngest = new GitIngest({
     tempDir: "./temp-test",
+    keepTempFiles: false, // 不保留临时文件
     defaultPatterns: {
       exclude: ["**/node_modules/**", "**/.git/**", "**/dist/**"],
     },
@@ -32,9 +34,9 @@ async function test() {
 
   try {
     const githubResult = await githubIngest.analyzeFromUrl(
-      "https://github.com/Gijela/CR-Mentor",
+      "https://github.com/Gijela/gitingest-ts",
       {
-        branch: "master",
+        branch: "main",
         maxFileSize: 500 * 1024, // 500KB
       }
     );

@@ -30,4 +30,5 @@ export interface GitIngestConfig {
     include?: string[];
     exclude?: string[];
   };
+  keepTempFiles?: boolean;
 } 

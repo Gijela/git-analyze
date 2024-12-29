@@ -16,7 +16,6 @@
   "scripts": {
     "dev": "tsup src/index.ts --format esm --watch",
     "build": "tsup src/index.ts --format esm --dts --clean",
-    "test": "vitest",
     "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\"",
     "test:example": "tsx examples/test.ts"
@@ -35,7 +34,6 @@
     "prettier": "^3.4.2",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2",
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "typescript": "^5.7.2"
   }
 }

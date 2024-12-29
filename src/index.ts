@@ -8,7 +8,7 @@ import type {
 } from './types/index.js';
 import { estimateTokens, generateTree, generateSummary } from './utils/index.js';
 import { GitIngestError, ValidationError, GitOperationError } from './core/errors.js';
-import { mkdir } from 'fs/promises';
+import { mkdir, rm } from 'fs/promises';
 import { existsSync } from 'fs';
 
 export class GitIngest {
@@ -26,8 +26,20 @@ export class GitIngest {
         include: ['**/*'],
         exclude: ['**/node_modules/**', '**/.git/**']
       },
+      keepTempFiles: false, // 默认不保留临时文件
       ...config
     };
+  }
+
+  // 清理临时目录
+  private async cleanupTempDir(dirPath: string): Promise<void> {
+    try {
+      if (existsSync(dirPath)) {
+        await rm(dirPath, { recursive: true, force: true });
+      }
+    } catch (error) {
+      console.warn(`Warning: Failed to cleanup temporary directory ${dirPath}: ${(error as Error).message}`);
+    }
   }
 
   async analyzeFromUrl(
@@ -47,6 +59,7 @@ export class GitIngest {
     }
 
     const workDir = `${this.config.tempDir}/${Date.now()}`;
+    let result: AnalysisResult;
 
     try {
       // 确保临时目录存在
@@ -63,8 +76,20 @@ export class GitIngest {
       }
 
       // 扫描文件
-      return this.analyzeFromDirectory(workDir, options);
+      result = await this.analyzeFromDirectory(workDir, options);
+
+      // 如果不保留临时文件，则清理
+      if (!this.config.keepTempFiles) {
+        await this.cleanupTempDir(workDir);
+      }
+
+      return result;
     } catch (error) {
+      // 发生错误时也尝试清理临时文件
+      if (!this.config.keepTempFiles) {
+        await this.cleanupTempDir(workDir);
+      }
+
       if (error instanceof GitIngestError) {
         throw error;
       }
