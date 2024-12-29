@@ -21,7 +21,8 @@
     "test:example": "tsx examples/test.ts",
     "analyze:complexity": "tsx examples/analyze-complexity.ts",
     "analyze:changes": "tsx examples/analyze-changes.ts",
-    "analyze:project": "tsx examples/analyze-project.ts"
+    "analyze:project": "tsx examples/analyze-project.ts",
+    "analyze:quality": "tsx examples/analyze-quality.ts"
   },
   "dependencies": {
     "dotenv": "^16.4.7",
