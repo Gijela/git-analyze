@@ -11,24 +11,27 @@ async function test() {
   });
 
   try {
-    // // 测试分析特定目录
+    // 测试分析特定目录
     // console.log("\n1.1 分析特定目录：");
+    // console.log("正在分析目录...");
     // const dirResult = await localIngest.analyzeFromDirectory("./src", {
-    //   targetPaths: ['core/', 'utils/']
+    //   targetPaths: ['test']
     // });
-    // console.log("分析结果:");
+    // console.log("分析完成！");
+    // console.log("\n分析结果:");
     // console.log("- 文件数:", dirResult.metadata.files);
     // console.log("- 总大小:", dirResult.metadata.size, "bytes");
-    // console.log("- Token数:", dirResult.metadata.tokens);
     // console.log("\n目录结构:");
     // console.log(dirResult.tree);
 
     // 测试分析特定文件
     console.log("\n1.2 分析特定文件：");
-    const fileResult = await localIngest.analyzeFromDirectory("./src", {
-      targetPaths: ['core/git.ts', 'types/index.ts', 'index.ts']
+    console.log("正在分析文件...");
+    const fileResult = await localIngest.analyzeFromDirectory("./", {
+      targetPaths: ['examples/test/index.ts']
     });
-    console.log("分析结果:");
+    console.log("分析完成！");
+    console.log("\n分析结果:");
     console.log("- 文件数:", fileResult.metadata.files);
     console.log("- 总大小:", fileResult.metadata.size, "bytes");
     console.log("\n文件内容:");

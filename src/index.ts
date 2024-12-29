@@ -147,7 +147,8 @@ export class GitIngest {
         maxFileSize: options?.maxFileSize || this.config.defaultMaxFileSize,
         includePatterns: options?.includePatterns || this.config.defaultPatterns?.include,
         excludePatterns: options?.excludePatterns || this.config.defaultPatterns?.exclude,
-        targetPaths: options?.targetPaths
+        targetPaths: options?.targetPaths,
+        includeDependencies: true
       });
 
       if (files.length === 0) {
