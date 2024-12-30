@@ -20,9 +20,9 @@ const BINARY_FILE_TYPES = [
 ];
 
 export class FileScanner {
-  private processedFiles: Set<string> = new Set();
+  protected processedFiles: Set<string> = new Set();
 
-  private async analyzeDependencies(content: string, filePath: string, basePath: string): Promise<string[]> {
+  protected async analyzeDependencies(content: string, filePath: string, basePath: string): Promise<string[]> {
     const dependencies: string[] = [];
     // 匹配 import 语句，包括 type 导入
     const importRegex = /(?:import|from)\s+['"]([^'"]+)['"]/g;

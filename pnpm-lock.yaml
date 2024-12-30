@@ -38,10 +38,10 @@ importers:
       simple-git:
         specifier: ^3.27.0
         version: 3.27.0
+      typescript:
+        specifier: ^5.7.2
+        version: 5.7.2
     devDependencies:
-      '@types/dotenv':
-        specifier: ^8.2.3
-        version: 8.2.3
       '@types/koa-static':
         specifier: ^4.0.4
         version: 4.0.4
@@ -69,9 +69,6 @@ importers:
       tsx:
         specifier: ^4.19.2
         version: 4.19.2
-      typescript:
-        specifier: ^5.7.2
-        version: 5.7.2
 
 packages:
 
@@ -600,10 +597,6 @@ packages:
 
   '@types/cookies@0.9.0':
     resolution: {integrity: sha512-40Zk8qR147RABiQ7NQnBzWzDcjKzNrntB5BAmeGCb2p/MIyOE+4BVvc17wumsUqUw00bJYqoXFHYygQnEFh4/Q==}
-
-  '@types/dotenv@8.2.3':
-    resolution: {integrity: sha512-g2FXjlDX/cYuc5CiQvyU/6kkbP1JtmGzh0obW50zD7OKeILVL0NSpPWLXVfqoAGQjom2/SLLx9zHq0KXvD6mbw==}
-    deprecated: This is a stub types definition. dotenv provides its own type definitions, so you do not need this installed.
 
   '@types/estree@1.0.6':
     resolution: {integrity: sha512-AYnb1nQyY49te+VRAVgmzfcgjYS91mY5P0TKUDCLEM+gNnA+3T6rWITXRLYCpahpqSQbN5cE+gHpnPyXjHWxcw==}
@@ -2033,10 +2026,6 @@ snapshots:
       '@types/express': 5.0.0
       '@types/keygrip': 1.0.6
       '@types/node': 22.10.2
-
-  '@types/dotenv@8.2.3':
-    dependencies:
-      dotenv: 16.4.7
 
   '@types/estree@1.0.6': {}
 

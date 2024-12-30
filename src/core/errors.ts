@@ -24,4 +24,26 @@ export class ValidationError extends GitIngestError {
     super(`Validation failed: ${message}`);
     this.name = 'ValidationError';
   }
+}
+
+export class DependencyAnalysisError extends Error {
+  constructor(
+    public readonly filePath: string,
+    public readonly errorType: 'parse' | 'resolve' | 'analyze',
+    message: string
+  ) {
+    super(`[${errorType}] ${message} in file: ${filePath}`);
+    this.name = 'DependencyAnalysisError';
+  }
+}
+
+export class GitAnalysisError extends Error {
+  constructor(
+    public readonly operation: string,
+    public readonly target: string,
+    message: string
+  ) {
+    super(`Git analysis failed: ${message} (${operation} on ${target})`);
+    this.name = 'GitAnalysisError';
+  }
 } 
