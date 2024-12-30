@@ -1,90 +1,67 @@
-# GitIngest-TS
+好的，让我为您梳理当前项目已实现的功能：
 
-A lightweight Git code analysis tool optimized for LLM context.
+### 1. 核心分析功能
 
-## ✨ Key Features
+- ✅ 支持分析 GitHub 仓库代码
+- ✅ 支持分析本地目录代码
+- ✅ 智能解析代码依赖关系
+- ✅ 生成项目文件树结构
+- ✅ 统计项目基本信息（文件数、大小、Token数等）
+- ✅ 生成项目概要信息
+- ✅ 分析文件类型分布
 
-- Support for GitHub repositories and local directory analysis
-- Intelligent code parsing and formatting
-- Automatic project structure and statistics generation
-- Built-in token count estimation
-- Type-safe TypeScript API
+### 2. Web 界面功能
 
-## 📦 Installation
+- ✅ RESTful API 接口
+  - `/analyze/local` - 分析本地目录
+  - `/analyze/github` - 分析 GitHub 仓库
+  - `/:owner/:repo` - 直接访问 GitHub 仓库分析
+  - `/health` - 健康检查接口
+- ✅ 可视化展示
+  - 项目基本信息展示
+  - 文件树可视化
+  - 项目概要展示
+  - 文件内容展示
+- ✅ 跨域支持 (CORS)
+- ✅ 静态文件服务
 
-todo
+### 3. 配置功能
 
-```bash
-# npm install gitingest-ts
-```
+- ✅ 临时文件管理
+  - 自动清理临时文件
+  - 可配置是否保留临时文件
+- ✅ 文件过滤
+  - 文件大小限制
+  - 文件类型过滤
+  - 自定义包含/排除模式
+- ✅ 代理支持
+  - HTTP 代理
+  - HTTPS 代理
 
-## 🚀 Quick Start
+### 4. 错误处理
 
-```typescript
-import { GitIngest } from "gitingest-ts";
+- ✅ 自定义错误类型
+- ✅ 错误日志记录
+- ✅ 请求日志记录
+- ✅ 友好的错误提示
 
-// Create analyzer instance
-const ingest = new GitIngest({
-  tempDir: "./temp",
-  defaultPatterns: {
-    exclude: ["**/node_modules/**", "**/.git/**"],
-  },
-});
+### 5. 性能优化
 
-// Analyze GitHub repository
-const result = await ingest.analyzeFromUrl(
-  "https://github.com/Gijela/gitingest-ts"
-);
+- ✅ 异步文件处理
+- ✅ 文件大小限制（默认 500KB）
+- ✅ 二进制文件过滤
+- ✅ 注释和空行过滤
 
-// Or analyze local directory
-const result = await ingest.analyzeFromDirectory("./project");
+### 6. 安全特性
 
-console.log(result.summary); // Project overview
-console.log(result.tree); // File structure
-```
+- ✅ 文件大小限制
+- ✅ 路径规范化
+- ✅ 错误信息过滤
 
-## 📖 Configuration Options
+### 7. 开发支持
 
-```typescript
-interface GitIngestConfig {
-  tempDir?: string; // Temporary file directory
-  defaultMaxFileSize?: number; // File size limit
-  defaultPatterns?: {
-    include?: string[]; // Included file patterns
-    exclude?: string[]; // Excluded file patterns
-  };
-}
-```
+- ✅ TypeScript 支持
+- ✅ ESM 模块支持
+- ✅ 完整的类型定义
 
-## 🔍 Analysis Results
-
-```typescript
-interface AnalysisResult {
-  summary: string; // Project summary
-  tree: string; // File tree
-  content: string; // Code content
-  metadata: {
-    files: number; // Number of files
-    size: number; // Total size
-    tokens: number; // Token count
-  };
-}
-```
-
-## ⚡️ Error Handling
-
-```typescript
-try {
-  const result = await ingest.analyzeFromUrl(
-    "https://github.com/Gijela/gitingest-ts"
-  );
-} catch (error) {
-  if (error instanceof GitIngestError) {
-    console.error("Analysis error:", error.message);
-  }
-}
-```
-
-## 📄 License
-
-MIT
+这个项目主要面向代码分析和 LLM 上下文准备，提供了完整的分析功能和友好的使用界面。
