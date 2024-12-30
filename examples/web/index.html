@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GitIngest-TS 代码分析工具</title>
   <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10.6.1/dist/mermaid.min.js"></script>
   <style>
     .tree-view {
       font-family: monospace;
@@ -18,7 +19,31 @@
       max-height: 400px;
       overflow-y: auto;
     }
+
+    .mermaid {
+      background: white;
+      padding: 1rem;
+      border-radius: 0.5rem;
+    }
   </style>
+  <script>
+    mermaid.initialize({
+      startOnLoad: false,
+      theme: 'default',
+      logLevel: 'error',
+      securityLevel: 'loose',
+      flowchart: {
+        useMaxWidth: true,
+        htmlLabels: true,
+        curve: 'basis'
+      },
+      sequence: {
+        useMaxWidth: true,
+        showSequenceNumbers: false,
+        wrap: true
+      }
+    });
+  </script>
 </head>
 
 <body class="bg-gray-100">
@@ -87,6 +112,19 @@
         <div class="mb-6">
           <h3 class="text-xl font-semibold mb-2">项目概要</h3>
           <div id="summary" class="bg-gray-50 p-4 rounded whitespace-pre-line"></div>
+        </div>
+
+        <!-- 可视化图表 -->
+        <div class="mb-6">
+          <h3 class="text-xl font-semibold mb-2">可视化图表</h3>
+
+          <div class="space-y-6">
+            <!-- 依赖关系图 -->
+            <div>
+              <h4 class="text-lg font-medium mb-2">依赖关系图</h4>
+              <div id="dependencyGraph" class="mermaid"></div>
+            </div>
+          </div>
         </div>
 
         <!-- 文件内容 -->

@@ -45,6 +45,47 @@ document.addEventListener("DOMContentLoaded", () => {
     return fileDiv;
   }
 
+  // 更新图表函数
+  async function updateMermaidGraphs(mermaidDiagrams) {
+    const graphs = {
+      fileRelationsGraph: mermaidDiagrams.fileRelations,
+      dependencyGraph: mermaidDiagrams.dependencies,
+      moduleGraph: mermaidDiagrams.modules,
+      sequenceGraph: mermaidDiagrams.sequence,
+    };
+
+    // 清除所有现有图表
+    document.querySelectorAll(".mermaid").forEach((element) => {
+      element.innerHTML = "";
+      element.removeAttribute("data-processed");
+    });
+
+    // 逐个渲染图表
+    for (const [elementId, graphDefinition] of Object.entries(graphs)) {
+      const element = document.getElementById(elementId);
+      if (element) {
+        console.log(`渲染图表 ${elementId}:`, graphDefinition);
+
+        try {
+          // 清除现有内容
+          element.innerHTML = graphDefinition;
+
+          // 重新初始化当前图表
+          await mermaid.init(undefined, element);
+        } catch (error) {
+          console.error(`图表 ${elementId} 渲染错误:`, error);
+          element.innerHTML = `
+            <div class="text-red-500 p-4 border border-red-300 rounded">
+              <p class="font-bold">图表渲染失败</p>
+              <pre class="mt-2 text-sm">${graphDefinition}</pre>
+              <p class="mt-2 text-sm">${error.message}</p>
+            </div>
+          `;
+        }
+      }
+    }
+  }
+
   // 分析按钮点击事件
   analyzeBtn.addEventListener("click", async () => {
     const isLocal = !localForm.classList.contains("hidden");
@@ -103,11 +144,13 @@ document.addEventListener("DOMContentLoaded", () => {
       document.getElementById("tree").textContent = analysisResult.tree;
       document.getElementById("summary").textContent = analysisResult.summary;
 
+      // 更新可视化图表
+      if (analysisResult.mermaidDiagrams) {
+        updateMermaidGraphs(analysisResult.mermaidDiagrams);
+      }
+
       // 清空并显示文件内容
       fileContents.innerHTML = "";
-
-      // 调试输出
-      console.log("Content to parse:", analysisResult.content);
 
       // 分割文件内容
       const files = analysisResult.content
@@ -116,12 +159,9 @@ document.addEventListener("DOMContentLoaded", () => {
         .map((section) => {
           const lines = section.split("\n");
           const filePath = lines[0].trim();
-          const content = lines.slice(2).join("\n").trim(); // 跳过分隔线
+          const content = lines.slice(2).join("\n").trim();
           return { filePath, content };
         });
-
-      // 调试输出
-      console.log("Parsed files:", files);
 
       // 创建文件内容元素
       files.forEach(({ filePath, content }) => {

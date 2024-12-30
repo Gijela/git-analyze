@@ -96,11 +96,149 @@ router.post('/analyze/local', async (ctx) => {
   // 格式化文件内容
   result.content = formatFileContent(result.content);
 
+  // 生成 Mermaid 图表数据
+  const mermaidDiagrams = {
+    // 依赖关系图
+    dependencies: generateDependencyGraph(result)
+  };
+
   ctx.body = {
     success: true,
-    data: result
+    data: {
+      ...result,
+      mermaidDiagrams
+    }
   };
 });
+
+// 工具函数：生成依赖关系图
+function generateDependencyGraph(result: any) {
+  let graph = 'graph LR\n';
+  const nodes = new Map<string, Set<string>>(); // 文件 -> 导出项集合
+  const edges = new Set<string>();
+
+  // 第一遍扫描：收集所有文件及其导出项
+  result.content.split('File: ').forEach((section: string) => {
+    if (!section) return;
+    const lines = section.split('\n');
+    const filePath = lines[0].trim();
+    const exports = new Set<string>();
+
+    lines.forEach((line: string) => {
+      // 收集导出的类
+      const classMatch = line.match(/export\s+class\s+(\w+)/);
+      if (classMatch) {
+        exports.add(classMatch[1]);
+      }
+
+      // 收集导出的类型和接口
+      const typeMatch = line.match(/export\s+(type|interface)\s+(\w+)/);
+      if (typeMatch) {
+        exports.add(typeMatch[2]);
+      }
+
+      // 收集导出的常量和函数
+      const constMatch = line.match(/export\s+(?:const|function)\s+(\w+)/);
+      if (constMatch) {
+        exports.add(constMatch[1]);
+      }
+    });
+
+    nodes.set(filePath, exports);
+  });
+
+  // 生成节点ID映射
+  const nodeIds = new Map<string, string>();
+  Array.from(nodes.keys()).forEach((file, index) => {
+    nodeIds.set(file, `n${index}`);
+  });
+
+  // 添加节点
+  nodes.forEach((exports, file) => {
+    const nodeId = nodeIds.get(file) || '';
+    graph += `  ${nodeId}["${file}"]\n`;
+  });
+
+  // 第二遍扫描：分析导入关系
+  result.content.split('File: ').forEach((section: string) => {
+    if (!section) return;
+    const lines = section.split('\n');
+    const currentFile = lines[0].trim();
+    const currentId = nodeIds.get(currentFile);
+    if (!currentId) return;
+
+    lines.forEach((line: string) => {
+      if (line.includes('import ')) {
+        // 处理具名导入
+        const namedImport = line.match(/import\s+{([^}]+)}\s+from\s+['"]([^'"]+)['"]/);
+        if (namedImport) {
+          const [, imports, from] = namedImport;
+          const importItems = imports.split(',').map(s => s.trim().split(' as ')[0]);
+
+          // 解析导入路径
+          const importPath = resolveImportPath(currentFile, from);
+          if (importPath && nodes.has(importPath)) {
+            const targetId = nodeIds.get(importPath);
+            if (targetId) {
+              importItems.forEach(item => {
+                if (nodes.get(importPath)?.has(item)) {
+                  graph += `  ${currentId} -- "${item}" --> ${targetId}\n`;
+                }
+              });
+            }
+          }
+        }
+
+        // 处理默认导入
+        const defaultImport = line.match(/import\s+(\w+)\s+from\s+['"]([^'"]+)['"]/);
+        if (defaultImport) {
+          const [, importName, from] = defaultImport;
+          const importPath = resolveImportPath(currentFile, from);
+          if (importPath && nodes.has(importPath)) {
+            const targetId = nodeIds.get(importPath);
+            if (targetId) {
+              graph += `  ${currentId} -- "${importName}" --> ${targetId}\n`;
+            }
+          }
+        }
+      }
+    });
+  });
+
+  return graph;
+}
+
+// 辅助函数：解析导入路径
+function resolveImportPath(currentFile: string, importPath: string): string | null {
+  if (!importPath.startsWith('.')) {
+    return null; // 忽略非相对路径导入
+  }
+
+  // 移除 .js 扩展名
+  importPath = importPath.replace(/\.js$/, '.ts');
+
+  // 获取当前文件的目录
+  const currentDir = currentFile.split('/').slice(0, -1).join('/');
+
+  // 解析相对路径
+  let resolvedPath = importPath.startsWith('./')
+    ? `${currentDir}/${importPath.slice(2)}`
+    : importPath.startsWith('../')
+      ? `${currentDir}/../${importPath.slice(3)}`
+      : importPath;
+
+  // 规范化路径
+  resolvedPath = resolvedPath.split('/').reduce((acc: string[], part: string) => {
+    if (part === '..') {
+      acc.pop();
+    } else if (part !== '.') {
+      acc.push(part);
+    }
+    return acc;
+  }, []).join('/');
+
+  return resolvedPath;
+}
 
 router.post('/analyze/github', async (ctx) => {
   const { url, branch, targetPaths } = ctx.request.body as {
@@ -127,9 +265,18 @@ router.post('/analyze/github', async (ctx) => {
   // 格式化文件内容
   result.content = formatFileContent(result.content);
 
+  // 生成 Mermaid 图表数据
+  const mermaidDiagrams = {
+    // 依赖关系图
+    dependencies: generateDependencyGraph(result)
+  };
+
   ctx.body = {
     success: true,
-    data: result
+    data: {
+      ...result,
+      mermaidDiagrams
+    }
   };
 });
 
