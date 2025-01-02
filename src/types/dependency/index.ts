@@ -46,9 +46,16 @@ export interface ClassRelationInfo {
   location: CodeLocation;
 }
 
+export type FileType =
+  | 'typescript'
+  | 'javascript'
+  | 'vue'
+  | 'jsx'
+  | 'tsx';
+
 export interface DependencyAnalysis {
   filePath: string;
-  fileType: 'typescript' | 'javascript';
+  fileType: FileType;
   imports: ImportInfo[];
   exports: ExportInfo[];
   functionCalls: FunctionCallInfo[];

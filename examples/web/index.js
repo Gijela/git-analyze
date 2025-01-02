@@ -48,10 +48,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // 更新图表函数
   async function updateMermaidGraphs(mermaidDiagrams) {
     const graphs = {
-      fileRelationsGraph: mermaidDiagrams.fileRelations,
       dependencyGraph: mermaidDiagrams.dependencies,
-      moduleGraph: mermaidDiagrams.modules,
-      sequenceGraph: mermaidDiagrams.sequence,
     };
 
     // 清除所有现有图表
@@ -62,15 +59,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 逐个渲染图表
     for (const [elementId, graphDefinition] of Object.entries(graphs)) {
+      if (!graphDefinition) continue;
+
       const element = document.getElementById(elementId);
       if (element) {
-        console.log(`渲染图表 ${elementId}:`, graphDefinition);
-
         try {
-          // 清除现有内容
           element.innerHTML = graphDefinition;
-
-          // 重新初始化当前图表
           await mermaid.init(undefined, element);
         } catch (error) {
           console.error(`图表 ${elementId} 渲染错误:`, error);

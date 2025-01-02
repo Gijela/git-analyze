@@ -1,4 +1,5 @@
 import * as ts from 'typescript';
+import { parse } from '@vue/compiler-sfc';
 import type {
   DependencyAnalysis,
   ImportInfo,
@@ -6,8 +7,10 @@ import type {
   FunctionCallInfo,
   ClassRelationInfo,
   MethodInfo,
-  CodeLocation
+  CodeLocation,
+  FileType
 } from '../../types/dependency/index.js';
+import * as path from 'path';
 
 export class DependencyAnalyzer {
   private program: ts.Program;
@@ -213,20 +216,63 @@ export class DependencyAnalyzer {
     return 'public';
   }
 
-  async analyzeFile(
-    content: string,
-    filePath: string
-  ): Promise<DependencyAnalysis> {
-    const sourceFile = this.getSourceFile(content, filePath);
+  private getFileType(filePath: string): FileType {
+    const ext = path.extname(filePath).toLowerCase();
+    switch (ext) {
+      case '.ts': return 'typescript';
+      case '.js': return 'javascript';
+      case '.vue': return 'vue';
+      case '.jsx': return 'jsx';
+      case '.tsx': return 'tsx';
+      default: return 'javascript';
+    }
+  }
+
+  private analyzeVueFile(content: string, filePath: string): DependencyAnalysis {
+    // 解析 Vue SFC
+    const { descriptor } = parse(content);
+    let scriptContent = '';
+
+    // 获取脚本内容
+    if (descriptor.script) {
+      scriptContent = descriptor.script.content;
+    } else if (descriptor.scriptSetup) {
+      scriptContent = descriptor.scriptSetup.content;
+    }
+
+    // 创建一个虚拟的 ts/js 文件来分析脚本部分
+    const sourceFile = this.getSourceFile(scriptContent, filePath);
 
     return {
       filePath,
-      fileType: filePath.endsWith('.ts') ? 'typescript' : 'javascript',
+      fileType: 'vue',
       imports: this.analyzeImports(sourceFile),
       exports: this.analyzeExports(sourceFile),
       functionCalls: this.analyzeFunctionCalls(sourceFile),
       classRelations: this.analyzeClassRelations(sourceFile),
-      dependencies: [] // 这个会在 EnhancedScanner 中填充
+      dependencies: []
+    };
+  }
+
+  async analyzeFile(content: string, filePath: string): Promise<DependencyAnalysis> {
+    const fileType = this.getFileType(filePath);
+
+    // 对于 Vue 文件使用专门的分析器
+    if (fileType === 'vue') {
+      return this.analyzeVueFile(content, filePath);
+    }
+
+    // 其他类型文件(ts/js/jsx/tsx)都使用 TypeScript 分析器
+    const sourceFile = this.getSourceFile(content, filePath);
+
+    return {
+      filePath,
+      fileType,
+      imports: this.analyzeImports(sourceFile),
+      exports: this.analyzeExports(sourceFile),
+      functionCalls: this.analyzeFunctionCalls(sourceFile),
+      classRelations: this.analyzeClassRelations(sourceFile),
+      dependencies: []
     };
   }
 } 
