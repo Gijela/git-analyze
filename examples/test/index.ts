@@ -1,3 +1,3 @@
-import { GitHandler } from '../../src/core/git.js';
+import { GitHandler } from '../../src/core/git';
 
-console.log('222');
+console.log('222', GitHandler);

@@ -51,7 +51,10 @@ export type FileType =
   | 'javascript'
   | 'vue'
   | 'jsx'
-  | 'tsx';
+  | 'tsx'
+  | 'java'
+  | 'python'
+  | 'go';
 
 export interface DependencyAnalysis {
   filePath: string;

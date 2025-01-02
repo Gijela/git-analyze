@@ -11,11 +11,23 @@ import type {
   FileType
 } from '../../types/dependency/index.js';
 import * as path from 'path';
+import { JavaAnalyzer } from './java-analyzer.js';
+import { PythonAnalyzer } from './python-analyzer.js';
+import { GoAnalyzer } from './go-analyzer.js';
+import { ILanguageAnalyzer } from './language-analyzer.js';
 
 export class DependencyAnalyzer {
-  private program: ts.Program;
+  private program: ts.Program | undefined;
+  private languageAnalyzers: ILanguageAnalyzer[];
 
   constructor(configPath?: string) {
+    // 初始化各语言分析器
+    this.languageAnalyzers = [
+      new JavaAnalyzer(),
+      new PythonAnalyzer(),
+      new GoAnalyzer()
+    ];
+
     // 如果提供了tsconfig路径，使用它创建program
     if (configPath) {
       const config = ts.readConfigFile(configPath, ts.sys.readFile);
@@ -255,6 +267,14 @@ export class DependencyAnalyzer {
   }
 
   async analyzeFile(content: string, filePath: string): Promise<DependencyAnalysis> {
+    // 首先尝试使用特定语言的分析器
+    for (const analyzer of this.languageAnalyzers) {
+      if (analyzer.isSupported(filePath)) {
+        return analyzer.analyzeFile(content, filePath);
+      }
+    }
+
+    // 如果没有特定的语言分析器，使用默认的 TypeScript/JavaScript 分析
     const fileType = this.getFileType(filePath);
 
     // 对于 Vue 文件使用专门的分析器

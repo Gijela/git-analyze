@@ -1,6 +1,6 @@
 import { simpleGit, SimpleGit } from 'simple-git';
-import { GitOperationError } from './errors.js';
-import { env } from '../utils/env.js';
+import { GitOperationError } from './errors';
+import { env } from '../utils/env';
 
 export class GitHandler {
   private git: SimpleGit;

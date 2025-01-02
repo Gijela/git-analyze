@@ -228,7 +228,7 @@ function generateDependencyGraph(result: any) {
     }
 
     // 尝试不同的可能性
-    const extensions = ['.ts', '.tsx', '.js', '.jsx', '.vue'];
+    const extensions = ['.ts', '.tsx', '.js', '.jsx', '.vue', '.py', '.go', '.java'];
 
     // 1. 尝试直接添加扩展名
     for (const ext of extensions) {
@@ -282,18 +282,37 @@ function generateDependencyGraph(result: any) {
     if (!currentId) return;
 
     lines.forEach((line: string) => {
-      // 匹配所有类型的导入语句
+      // 现有的导入匹配模式
       const importMatches = [
-        // 具名导入: import { x } from 'y'
-        line.match(/import\s+{([^}]+)}\s+from\s+['"]([^'"]+)['"]/),
-        // 默认导入: import x from 'y'
-        line.match(/import\s+(\w+)\s+from\s+['"]([^'"]+)['"]/),
-        // 命名空间导入: import * as x from 'y'
-        line.match(/import\s+\*\s+as\s+\w+\s+from\s+['"]([^'"]+)['"]/),
-        // 副作用导入: import 'y'
-        line.match(/import\s+['"]([^'"]+)['"]/),
-        // 类型导入: import type { x } from 'y'
-        line.match(/import\s+type\s+{([^}]+)}\s+from\s+['"]([^'"]+)['"]/),
+        // 已有的 JavaScript/TypeScript 导入匹配
+        line.match(/import\s+{([^}]+)}\s+from\s+['"]([^'"]+)['"]/), // 1. 导入对象
+        line.match(/import\s+(\w+)\s+from\s+['"]([^'"]+)['"]/), // 2. 导入单个变量
+        line.match(/import\s+\*\s+as\s+\w+\s+from\s+['"]([^'"]+)['"]/), // 3. 导入所有内容并重命名
+        line.match(/import\s+['"]([^'"]+)['"]/), // 4. 导入单个模块
+        line.match(/import\s+type\s+{([^}]+)}\s+from\s+['"]([^'"]+)['"]/), // 5. 导入类型
+
+        // Python 导入匹配模式
+        line.match(/^import\s+(\w+)/), // 1. 基本导入: import module 
+        line.match(/from\s+([.\w]+)\s+import\s+(.+)/), // 2. from ... import ... 语法
+        line.match(/import\s+([.\w]+)\s+as\s+\w+/), // 3. import ... as ... 语法
+        line.match(/from\s+([.\w]+)\s+import\s+\w+\s+as\s+\w+/), // 4. from ... import ... as ... 语法
+        line.match(/from\s+([.\w]+)\s+import\s+\(([^)]+)\)/), // 5. 多重导入: from module import (item1, item2)
+        line.match(/from\s+(\.+)([.\w]*)\s+import\s+(.+)/), // 6. 相对导入: from . import module 或 from .. import module
+
+        // Go 导入匹配模式
+        line.match(/import\s+([^\s]+)\s+([^\s]+)/), // 1. 基本导入: import module
+        line.match(/import\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)/), // 2. 导入多个模块: import module1, module2
+        line.match(/import\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)/), // 3. 导入多个模块: import module1, module2, module3
+        line.match(/import\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)/), // 4. 导入多个模块: import module1, module2, module3, module4
+        line.match(/import\s+\(\s*([^)]+)\s*\)/), // 5. 多行导入: import ( ... )
+
+        // Java 导入匹配模式
+        line.match(/import\s+([^;]+);/), // 1. 基本导入: import package.Class;
+        line.match(/import\s+([^.]+\.[^;]+);/), // 2. 导入具体类: import java.util.List;
+        line.match(/import\s+([^.]+)\.([^;]+)\*;/), // 3. 导入包下所有类: import java.util.*;
+        line.match(/import\s+static\s+([^;]+);/), // 4. 静态导入: import static package.Class.method;
+        line.match(/import\s+static\s+([^.]+)\.([^;]+)\*;/), // 5. 静态导入所有: import static package.Class.*;
+
       ].filter(Boolean);
 
       for (const match of importMatches) {
