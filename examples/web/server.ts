@@ -129,9 +129,9 @@ router.post('/analyze/local', async (ctx) => {
 // 工具函数：生成依赖关系图
 function generateDependencyGraph(result: any) {
   let graph = 'graph LR\n';
-  const nodes = new Map<string, Set<string>>(); // 文件 -> 导出项集合
-  const externalDeps = new Set<string>(); // 外部依赖库
-  const edges = new Set<string>();
+  const nodes = new Map<string, Set<string>>();
+  const externalDeps = new Set<string>();
+  const edges = new Map<string, Set<string>>();
 
   // 忽略的文件类型
   const ignoredExtensions = ['.css', '.less', '.scss', '.sass', '.style', '.styles'];
@@ -275,45 +275,14 @@ function generateDependencyGraph(result: any) {
     const lines = section.split('\n');
     const currentFile = lines[0].trim();
 
-    // 跳过样式文件
     if (isStyleFile(currentFile)) return;
 
     const currentId = nodeIds.get(currentFile);
     if (!currentId) return;
 
     lines.forEach((line: string) => {
-      // 现有的导入匹配模式
-      const importMatches = [
-        // 已有的 JavaScript/TypeScript 导入匹配
-        line.match(/import\s+{([^}]+)}\s+from\s+['"]([^'"]+)['"]/), // 1. 导入对象
-        line.match(/import\s+(\w+)\s+from\s+['"]([^'"]+)['"]/), // 2. 导入单个变量
-        line.match(/import\s+\*\s+as\s+\w+\s+from\s+['"]([^'"]+)['"]/), // 3. 导入所有内容并重命名
-        line.match(/import\s+['"]([^'"]+)['"]/), // 4. 导入单个模块
-        line.match(/import\s+type\s+{([^}]+)}\s+from\s+['"]([^'"]+)['"]/), // 5. 导入类型
-
-        // Python 导入匹配模式
-        line.match(/^import\s+(\w+)/), // 1. 基本导入: import module 
-        line.match(/from\s+([.\w]+)\s+import\s+(.+)/), // 2. from ... import ... 语法
-        line.match(/import\s+([.\w]+)\s+as\s+\w+/), // 3. import ... as ... 语法
-        line.match(/from\s+([.\w]+)\s+import\s+\w+\s+as\s+\w+/), // 4. from ... import ... as ... 语法
-        line.match(/from\s+([.\w]+)\s+import\s+\(([^)]+)\)/), // 5. 多重导入: from module import (item1, item2)
-        line.match(/from\s+(\.+)([.\w]*)\s+import\s+(.+)/), // 6. 相对导入: from . import module 或 from .. import module
-
-        // Go 导入匹配模式
-        line.match(/import\s+([^\s]+)\s+([^\s]+)/), // 1. 基本导入: import module
-        line.match(/import\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)/), // 2. 导入多个模块: import module1, module2
-        line.match(/import\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)/), // 3. 导入多个模块: import module1, module2, module3
-        line.match(/import\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)\s+([^\s]+)/), // 4. 导入多个模块: import module1, module2, module3, module4
-        line.match(/import\s+\(\s*([^)]+)\s*\)/), // 5. 多行导入: import ( ... )
-
-        // Java 导入匹配模式
-        line.match(/import\s+([^;]+);/), // 1. 基本导入: import package.Class;
-        line.match(/import\s+([^.]+\.[^;]+);/), // 2. 导入具体类: import java.util.List;
-        line.match(/import\s+([^.]+)\.([^;]+)\*;/), // 3. 导入包下所有类: import java.util.*;
-        line.match(/import\s+static\s+([^;]+);/), // 4. 静态导入: import static package.Class.method;
-        line.match(/import\s+static\s+([^.]+)\.([^;]+)\*;/), // 5. 静态导入所有: import static package.Class.*;
-
-      ].filter(Boolean);
+      const fileExt = currentFile.split('.').pop() || '';
+      const importMatches = getImportMatches(line, fileExt);
 
       for (const match of importMatches) {
         if (!match) continue;
@@ -321,7 +290,17 @@ function generateDependencyGraph(result: any) {
         // 获取导入路径 (最后一个捕获组总是路径)
         const from = match[match.length - 1];
 
-        // 跳过样式文件的导入
+        // 获取导入项
+        let importItems = '';
+        if (match[1] && match[2]) {
+          // 处理 import { a, b } from 'path' 形式
+          importItems = match[1];
+        } else if (match[1]) {
+          // 处理 import name from 'path' 形式
+          importItems = match[1];
+        }
+
+        // 跳过样式文件
         if (isStyleFile(from)) continue;
 
         // 处理外部库导入
@@ -331,7 +310,12 @@ function generateDependencyGraph(result: any) {
             externalNodeIds.set(from, extId);
             graph += `  ${extId}["${from}"]\n`;
           }
-          graph += `  ${currentId} --> ${externalNodeIds.get(from)}\n`;
+          const edgeKey = `${currentId},${externalNodeIds.get(from)}`;
+          if (!edges.has(edgeKey)) {
+            edges.set(edgeKey, new Set([importItems]));
+          } else {
+            edges.get(edgeKey)?.add(importItems);
+          }
           continue;
         }
 
@@ -340,14 +324,82 @@ function generateDependencyGraph(result: any) {
         if (importPath && !isStyleFile(importPath)) {
           const targetId = nodeIds.get(importPath);
           if (targetId) {
-            graph += `  ${currentId} --> ${targetId}\n`;
+            const edgeKey = `${currentId},${targetId}`;
+            if (!edges.has(edgeKey)) {
+              edges.set(edgeKey, new Set([importItems]));
+            } else {
+              edges.get(edgeKey)?.add(importItems);
+            }
           }
         }
       }
     });
   });
 
+  // 添加节点
+  nodes.forEach((exports, file) => {
+    const nodeId = nodeIds.get(file) || '';
+    graph += `  ${nodeId}["${file}"]\n`;
+  });
+
+  // 添加带标签的边
+  edges.forEach((importItems, key) => {
+    const [fromId, toId] = key.split(',');
+    const label = Array.from(importItems).filter(Boolean).join(', ');
+    graph += label
+      ? `  ${fromId} -->|"${label}"| ${toId}\n`
+      : `  ${fromId} --> ${toId}\n`;
+  });
+
   return graph;
+}
+
+function getImportMatches(line: string, fileExtension: string) {
+  // 根据文件扩展名确定语言类型
+  const patterns = {
+    // JavaScript/TypeScript 模式
+    ts: [
+      line.match(/import\s+{([^}]+)}\s+from\s+['"]([^'"]+)['"]/),
+      line.match(/import\s+(\w+)\s+from\s+['"]([^'"]+)['"]/),
+      line.match(/import\s+\*\s+as\s+\w+\s+from\s+['"]([^'"]+)['"]/),
+      line.match(/import\s+['"]([^'"]+)['"]/),
+      line.match(/import\s+type\s+{([^}]+)}\s+from\s+['"]([^'"]+)['"]/),
+    ],
+    js: [
+      line.match(/import\s+{([^}]+)}\s+from\s+['"]([^'"]+)['"]/),
+      line.match(/import\s+(\w+)\s+from\s+['"]([^'"]+)['"]/),
+      line.match(/import\s+\*\s+as\s+\w+\s+from\s+['"]([^'"]+)['"]/),
+      line.match(/import\s+['"]([^'"]+)['"]/),
+    ],
+    // Python 模式
+    py: [
+      line.match(/^import\s+(\w+)/),
+      line.match(/from\s+([.\w]+)\s+import\s+(.+)/),
+      line.match(/import\s+([.\w]+)\s+as\s+\w+/),
+      line.match(/from\s+([.\w]+)\s+import\s+\w+\s+as\s+\w+/),
+      line.match(/from\s+([.\w]+)\s+import\s+\(([^)]+)\)/),
+      line.match(/from\s+(\.+)([.\w]*)\s+import\s+(.+)/),
+    ],
+    // Go 模式
+    go: [
+      line.match(/import\s+([^\s]+)\s+([^\s]+)/),
+      line.match(/import\s+\(\s*([^)]+)\s*\)/),
+    ],
+    // Java 模式
+    java: [
+      line.match(/import\s+([^;]+);/),
+      line.match(/import\s+([^.]+\.[^;]+);/),
+      line.match(/import\s+([^.]+)\.([^;]+)\*;/),
+      line.match(/import\s+static\s+([^;]+);/),
+      line.match(/import\s+static\s+([^.]+)\.([^;]+)\*;/),
+    ],
+  };
+
+  // 获取文件扩展名对应的模式，如果没有找到则使用 TypeScript 模式作为默认值
+  const ext = fileExtension.toLowerCase().replace('.', '') as keyof typeof patterns;
+  const matchPatterns = patterns[ext] || patterns.ts;
+
+  return matchPatterns.filter(Boolean);
 }
 
 router.post('/analyze/github', async (ctx) => {
