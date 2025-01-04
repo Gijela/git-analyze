@@ -86,7 +86,13 @@ export class GitIngest {
       throw new ValidationError('Temporary directory is required');
     }
 
-    const workDir = `${this.config.tempDir}/${Date.now()}`;
+    // 从URL中提取仓库名
+    const repoMatch = githubUrl.match(/github\.com\/[^\/]+\/([^\/]+)/);
+    const repoName = repoMatch ? repoMatch[1] : 'unknown';
+    // 生成唯一标识符（使用时间戳的后6位作为唯一值）
+    const uniqueId = Date.now().toString().slice(-6);
+    const workDir = `${this.config.tempDir}/${repoName}-${uniqueId}`;
+
     let result: AnalysisResult;
 
     try {

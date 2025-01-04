@@ -70,25 +70,41 @@ const processTargetPaths = (paths?: string) => {
 
 // 工具函数：格式化文件内容
 const formatFileContent = (content: string) => {
+  let projectName = '';
+
   // 移除多余的空行和分隔符
-  return content.split('File: ')
+  const formattedContent = content.split('File: ')
     .filter(Boolean)
     .map(section => {
       const [path, ...contentLines] = section.trim().split('\n');
-      // 清理路径，移除临时目录前缀
+      // 从第一个文件路径中提取项目名
+      if (!projectName) {
+        const match = path.match(/^temp-web\/([^\/]+)-\d+\//);
+        if (match) {
+          projectName = match[1];
+        }
+      }
+
+      // 清理路径，移除 temp-web/任意目录名/
       const cleanPath = path
+        // .replace(/^temp-web\/([^\/]+)-\d+\//, '$1/')  // 保留项目名但移除temp-web前缀和时间戳
         .replace(/^temp-web\/[^/]+\//, '')  // 移除 temp-web/任意目录名/ 前缀
-        .replace(/\\/g, '/');               // 统一使用正斜杠
+        .replace(/\\/g, '/');                    // 统一使用正斜杠
 
       return `File: ${cleanPath}\n${contentLines.join('\n')}`;
     })
     .join('\n\n');
+
+  return {
+    content: formattedContent,
+    projectName
+  };
 };
 
 // 修改分析结果处理函数
-async function processAnalysisResult(result: any) {
+async function processAnalysisResult(result: any, projectName: string) {
   const mermaidDiagrams = {
-    dependencies: generateDependencyGraph(result)
+    dependencies: generateDependencyGraph(result, projectName)
   };
 
   return {
@@ -215,41 +231,46 @@ function resolveImportPath(currentFile: string, importPath: string, nodes: Map<s
   return null;
 }
 
-// API 路由
-router.post('/analyze/local', async (ctx) => {
-  const { path: dirPath, targetPaths } = ctx.request.body as {
-    path?: string;
-    targetPaths?: string;
-  };
+// // API 路由
+// router.post('/analyze/local', async (ctx) => {
+//   const { path: dirPath, targetPaths } = ctx.request.body as {
+//     path?: string;
+//     targetPaths?: string;
+//   };
 
-  if (!dirPath) {
-    ctx.status = 400;
-    ctx.body = {
-      success: false,
-      error: '目录路径不能为空'
-    };
-    return;
-  }
+//   if (!dirPath) {
+//     ctx.status = 400;
+//     ctx.body = {
+//       success: false,
+//       error: '目录路径不能为空'
+//     };
+//     return;
+//   }
 
-  const result = await ingest.analyzeFromDirectory(dirPath, {
-    targetPaths: processTargetPaths(targetPaths)
-  });
+//   const result = await ingest.analyzeFromDirectory(dirPath, {
+//     targetPaths: processTargetPaths(targetPaths)
+//   });
 
-  result.content = formatFileContent(result.content);
+//   const { content, projectName } = formatFileContent(result.content);
+//   result.content = content;
 
-  // 使用新的处理函数
-  ctx.body = {
-    success: true,
-    data: await processAnalysisResult(result)
-  };
-});
+//   // 使用新的处理函数
+//   ctx.body = {
+//     success: true,
+//     data: await processAnalysisResult(result, projectName)
+//   };
+// });
 
 // 工具函数：生成依赖关系图
-function generateDependencyGraph(result: any) {
+function generateDependencyGraph(result: any, projectName: string = 'Project') {
   let graph = 'graph LR\n';
   const nodes = new Map<string, Set<string>>();
   const externalDeps = new Set<string>();
   const edges = new Map<string, Set<string>>();
+
+  // 添加项目根节点
+  const rootNodeId = 'root';
+  graph += `  ${rootNodeId}["${projectName}"]\n`;
 
   // 忽略的文件类型
   const ignoredExtensions = ['.css', '.less', '.scss', '.sass', '.style', '.styles'];
@@ -301,10 +322,12 @@ function generateDependencyGraph(result: any) {
     nodeIds.set(file, `n${index}`);
   });
 
-  // 添加文件节点
+  // 修改节点添加逻辑，将所有节点连接到根节点
   nodes.forEach((exports, file) => {
     const nodeId = nodeIds.get(file) || '';
     graph += `  ${nodeId}["${file}"]\n`;
+    // 将每个文件节点连接到项目根节点
+    graph += `  ${rootNodeId} --> ${nodeId}\n`;
   });
 
   // 添加外部依赖节点
@@ -460,12 +483,6 @@ function generateDependencyGraph(result: any) {
     });
   });
 
-  // 添加节点
-  nodes.forEach((exports, file) => {
-    const nodeId = nodeIds.get(file) || '';
-    graph += `  ${nodeId}["${file}"]\n`;
-  });
-
   // 添加带标签的边
   edges.forEach((importItems, key) => {
     const [fromId, toId] = key.split(',');
@@ -603,12 +620,13 @@ router.post('/analyze/github', async (ctx) => {
       .join('\n');
 
     // 格式化结果
-    result.content = formatFileContent(result.content);
+    const { content, projectName } = formatFileContent(result.content);
+    result.content = content;
 
     // 返回结果
     ctx.body = {
       success: true,
-      data: await processAnalysisResult(result)
+      data: await processAnalysisResult(result, projectName)
     };
   } catch (error) {
     console.error('GitHub repository analysis failed:', error);
@@ -620,104 +638,104 @@ router.post('/analyze/github', async (ctx) => {
   }
 });
 
-// 添加新的路由处理 /:owner/:repo 格式的请求
-router.get('/:owner/:repo', async (ctx) => {
-  const { owner, repo } = ctx.params;
-  const githubUrl = `https://github.com/${owner}/${repo}`;
+// // 添加新的路由处理 /:owner/:repo 格式的请求
+// router.get('/:owner/:repo', async (ctx) => {
+//   const { owner, repo } = ctx.params;
+//   const githubUrl = `https://github.com/${owner}/${repo}`;
 
-  try {
-    // 分析仓库
-    const result = await ingest.analyzeFromUrl(githubUrl, {
-      maxFileSize: 500 * 1024 // 500KB
-    });
+//   try {
+//     // 分析仓库
+//     const result = await ingest.analyzeFromUrl(githubUrl, {
+//       maxFileSize: 500 * 1024 // 500KB
+//     });
 
-    // 渲染 HTML 页面
-    const html = `
-    <!DOCTYPE html>
-    <html lang="zh-CN">
-    <head>
-      <meta charset="UTF-8">
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${owner}/${repo} - GitIngest 分析结果</title>
-      <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-      <style>
-        .tree-view { font-family: monospace; white-space: pre; }
-        .code-block { font-family: monospace; white-space: pre-wrap; max-height: 400px; overflow-y: auto; }
-      </style>
-    </head>
-    <body class="bg-gray-100">
-      <div class="container mx-auto px-4 py-8">
-        <h1 class="text-4xl font-bold text-center mb-8">${owner}/${repo}</h1>
-        
-        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
-          <!-- 基本信息 -->
-          <div class="mb-6">
-            <h3 class="text-xl font-semibold mb-2">基本信息</h3>
-            <div class="bg-gray-50 p-4 rounded">
-              文件数: ${result.metadata.files}
-              总大小: ${result.metadata.size} bytes
-              预估Token数: ${result.metadata.tokens}
-            </div>
-          </div>
+//     // 渲染 HTML 页面
+//     const html = `
+//     <!DOCTYPE html>
+//     <html lang="zh-CN">
+//     <head>
+//       <meta charset="UTF-8">
+//       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+//       <title>${owner}/${repo} - GitIngest 分析结果</title>
+//       <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+//       <style>
+//         .tree-view { font-family: monospace; white-space: pre; }
+//         .code-block { font-family: monospace; white-space: pre-wrap; max-height: 400px; overflow-y: auto; }
+//       </style>
+//     </head>
+//     <body class="bg-gray-100">
+//       <div class="container mx-auto px-4 py-8">
+//         <h1 class="text-4xl font-bold text-center mb-8">${owner}/${repo}</h1>
 
-          <!-- 文件树 -->
-          <div class="mb-6">
-            <h3 class="text-xl font-semibold mb-2">文件树</h3>
-            <div class="bg-gray-50 p-4 rounded tree-view">${result.tree}</div>
-          </div>
+//         <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+//           <!-- 基本信息 -->
+//           <div class="mb-6">
+//             <h3 class="text-xl font-semibold mb-2">基本信息</h3>
+//             <div class="bg-gray-50 p-4 rounded">
+//               文件数: ${result.metadata.files}
+//               总大小: ${result.metadata.size} bytes
+//               预估Token数: ${result.metadata.tokens}
+//             </div>
+//           </div>
 
-          <!-- 项目概要 -->
-          <div class="mb-6">
-            <h3 class="text-xl font-semibold mb-2">项目概要</h3>
-            <div class="bg-gray-50 p-4 rounded whitespace-pre-line">${result.summary}</div>
-          </div>
+//           <!-- 文件树 -->
+//           <div class="mb-6">
+//             <h3 class="text-xl font-semibold mb-2">文件树</h3>
+//             <div class="bg-gray-50 p-4 rounded tree-view">${result.tree}</div>
+//           </div>
 
-          <!-- 文件内容 -->
-          <div>
-            <h3 class="text-xl font-semibold mb-2">文件内容</h3>
-            <div class="space-y-4">
-              ${result.content
-        .split(/File: /)
-        .filter(Boolean)
-        .map(section => {
-          const lines = section.split('\n');
-          const filePath = lines[0].trim();
-          const content = lines.slice(2).join('\n').trim();
-          return `
-                    <div class="bg-gray-50 p-4 rounded">
-                      <div class="font-semibold mb-2 text-blue-600">${filePath}</div>
-                      <div class="code-block bg-gray-100 p-4 rounded">${content}</div>
-                    </div>
-                  `;
-        })
-        .join('')}
-            </div>
-          </div>
-        </div>
-      </div>
-    </body>
-    </html>
-    `;
+//           <!-- 项目概要 -->
+//           <div class="mb-6">
+//             <h3 class="text-xl font-semibold mb-2">项目概要</h3>
+//             <div class="bg-gray-50 p-4 rounded whitespace-pre-line">${result.summary}</div>
+//           </div>
 
-    ctx.type = 'html';
-    ctx.body = html;
-  } catch (error) {
-    ctx.status = 500;
-    ctx.body = {
-      success: false,
-      // error: error.message
-    };
-  }
-});
+//           <!-- 文件内容 -->
+//           <div>
+//             <h3 class="text-xl font-semibold mb-2">文件内容</h3>
+//             <div class="space-y-4">
+//               ${result.content
+//         .split(/File: /)
+//         .filter(Boolean)
+//         .map(section => {
+//           const lines = section.split('\n');
+//           const filePath = lines[0].trim();
+//           const content = lines.slice(2).join('\n').trim();
+//           return `
+//                     <div class="bg-gray-50 p-4 rounded">
+//                       <div class="font-semibold mb-2 text-blue-600">${filePath}</div>
+//                       <div class="code-block bg-gray-100 p-4 rounded">${content}</div>
+//                     </div>
+//                   `;
+//         })
+//         .join('')}
+//             </div>
+//           </div>
+//         </div>
+//       </div>
+//     </body>
+//     </html>
+//     `;
 
-// 健康检查接口
-router.get('/health', (ctx) => {
-  ctx.body = {
-    success: true,
-    timestamp: new Date().toISOString(),
-    status: 'running'
-  };
-});
+//     ctx.type = 'html';
+//     ctx.body = html;
+//   } catch (error) {
+//     ctx.status = 500;
+//     ctx.body = {
+//       success: false,
+//       // error: error.message
+//     };
+//   }
+// });
+
+// // 健康检查接口
+// router.get('/health', (ctx) => {
+//   ctx.body = {
+//     success: true,
+//     timestamp: new Date().toISOString(),
+//     status: 'running'
+//   };
+// });
 
 // 注册路由
 app.use(router.routes()).use(router.allowedMethods());
