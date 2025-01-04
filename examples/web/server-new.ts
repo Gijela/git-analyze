@@ -77,9 +77,9 @@ const formatFileContent = (content: string) => {
       const [path, ...contentLines] = section.trim().split('\n');
       // 清理路径，移除临时目录前缀
       const cleanPath = path
-        .replace(/^temp-web\/\d+\/[^/]+\/src\//, 'src/') // 处理带临时目录的 src 路径
-        .replace(/^temp-web\/\d+\/[^/]+\//, '')          // 处理其他临时目录路径
-        .replace(/\\/g, '/');                            // 统一使用正斜杠
+        .replace(/^temp-web\/[^/]+\//, '')  // 移除 temp-web/任意目录名/ 前缀
+        .replace(/\\/g, '/');               // 统一使用正斜杠
+
       return `File: ${cleanPath}\n${contentLines.join('\n')}`;
     })
     .join('\n\n');
@@ -595,6 +595,12 @@ router.post('/analyze/github', async (ctx) => {
       targetPaths: allTargetPaths,
       maxFileSize: 500 * 1024
     });
+
+    // 清理文件树中的临时目录 temp-web 和时间戳目录
+    result.tree = result.tree
+      .split('\n')
+      .slice(2)  // 跳过前2行（包括 temp-web、时间戳目录）
+      .join('\n');
 
     // 格式化结果
     result.content = formatFileContent(result.content);
