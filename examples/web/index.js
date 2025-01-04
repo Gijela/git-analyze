@@ -106,6 +106,8 @@ document.addEventListener("DOMContentLoaded", () => {
         url,
         branch: document.getElementById("branch").value,
         targetPaths: document.getElementById("githubTargetPaths").value,
+        aliasPath: document.getElementById("aliasPath").value || "src",
+        analyzeDependencies: true,
       };
     }
 

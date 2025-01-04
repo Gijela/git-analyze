@@ -21,7 +21,7 @@
     "test:example": "tsx examples/scanner.ts",
     "test:dependency": "tsx examples/test/dependency-analysis.ts",
     "test:branch": "tsx examples/test/branch-analysis.ts",
-    "web:dev": "tsx examples/web/server.ts",
+    "web:dev": "tsx examples/web/server-new.ts",
     "web:build": "tsup examples/web/server.ts --format esm --dts --clean"
   },
   "dependencies": {
