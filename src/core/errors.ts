@@ -1,3 +1,4 @@
+// 错误基类
 export class GitIngestError extends Error {
   constructor(message: string) {
     super(message);
@@ -5,6 +6,7 @@ export class GitIngestError extends Error {
   }
 }
 
+// 错误基类
 export class GitOperationError extends GitIngestError {
   constructor(operation: string, details: string) {
     super(`Git operation '${operation}' failed: ${details}`);
@@ -12,6 +14,7 @@ export class GitOperationError extends GitIngestError {
   }
 }
 
+// 文件处理错误
 export class FileProcessError extends GitIngestError {
   constructor(path: string, reason: string) {
     super(`Failed to process file '${path}': ${reason}`);
@@ -19,6 +22,7 @@ export class FileProcessError extends GitIngestError {
   }
 }
 
+// 验证错误
 export class ValidationError extends GitIngestError {
   constructor(message: string) {
     super(`Validation failed: ${message}`);
@@ -26,6 +30,7 @@ export class ValidationError extends GitIngestError {
   }
 }
 
+// 依赖分析错误
 export class DependencyAnalysisError extends Error {
   constructor(
     public readonly filePath: string,
@@ -37,6 +42,7 @@ export class DependencyAnalysisError extends Error {
   }
 }
 
+// git 分析错误
 export class GitAnalysisError extends Error {
   constructor(
     public readonly operation: string,

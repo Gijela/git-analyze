@@ -1,8 +1,8 @@
 import { glob } from 'glob';
 import { readFile, stat } from 'fs/promises';
-import type { FileInfo } from '../types/index.js';
-import { FileProcessError, ValidationError } from '../core/errors.js';
-import { dirname, join, resolve } from 'path';
+import type { FileInfo } from '../types/index';
+import { FileProcessError, ValidationError } from './errors';
+import { dirname, join } from 'path';
 
 interface ScanOptions {
   maxFileSize?: number;

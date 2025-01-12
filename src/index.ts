@@ -169,8 +169,8 @@ export class GitIngest {
 
       // 生成分析结果
       return {
-        summary: this.generateSummary(files, metadata),
-        tree: this.generateTree(files),
+        summary: generateSummary(files, metadata),
+        tree: generateTree(files),
         content: this.generateContent(files),
         metadata
       };
@@ -186,26 +186,14 @@ export class GitIngest {
     return {
       files: files.length,
       size: files.reduce((acc, file) => acc + file.size, 0),
-      tokens: files.reduce((acc, file) => acc + this.estimateTokens(file.content), 0)
+      tokens: files.reduce((acc, file) => acc + estimateTokens(file.content), 0)
     };
-  }
-
-  private generateSummary(files: FileInfo[], metadata: any): string {
-    return generateSummary(files, metadata);
-  }
-
-  private generateTree(files: FileInfo[]): string {
-    return generateTree(files);
   }
 
   private generateContent(files: FileInfo[]): string {
     return files.map(file => {
       return `File: ${file.path}\n${'='.repeat(40)}\n${file.content}\n\n`;
     }).join('\n');
-  }
-
-  private estimateTokens(content: string): number {
-    return estimateTokens(content);
   }
 }
 
