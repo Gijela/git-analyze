@@ -50,73 +50,26 @@ export class FileScanner {
 
     const extensions = getExtensions(fileName);
 
+    const targetBasePath = join(basePath, dirPath);
+
     // 构建可能的基础路径
-    const possibleBasePaths = [
-      join(basePath, dirPath),
-      join(basePath, 'src', dirPath),
-      ...glob.sync(`${basePath}/*/src/${dirPath}`, { absolute: true })
-    ];
+    // const possibleBasePaths = [
+    //   join(basePath, dirPath),
+    //   join(basePath, 'src', dirPath),
+    //   ...glob.sync(`${basePath}/*/src/${dirPath}`, { absolute: true })
+    // ];
 
     // 如果文件名没有扩展名
     if (!fileName.includes('.')) {
-      for (const currentBasePath of possibleBasePaths) {
-        // 1. 尝试直接添加扩展名
-        for (const ext of extensions) {
-          const fullPath = join(currentBasePath, fileName + ext);
-          try {
-            const stats = await stat(fullPath);
-            if (stats.isFile()) {
-              // 返回清理过的路径
-              return join(dirPath, fileName + ext)
-                .replace(new RegExp(`^${basePath}/.*?/src/`), 'src/')
-                .replace(new RegExp(`^${basePath}/`), '')
-                .replace(/\\/g, '/');
-            }
-          } catch (error) {
-            continue;
-          }
-        }
-
-        // 2. 尝试查找 index 文件
-        const dirFullPath = join(currentBasePath, fileName);
-        try {
-          const stats = await stat(dirFullPath);
-          if (stats.isDirectory()) {
-            for (const ext of extensions) {
-              const indexPath = join(dirFullPath, 'index' + ext);
-              try {
-                const indexStats = await stat(indexPath);
-                if (indexStats.isFile()) {
-                  // 返回清理过的路径
-                  return join(dirPath, fileName, 'index' + ext)
-                    .replace(new RegExp(`^${basePath}/.*?/src/`), 'src/')
-                    .replace(new RegExp(`^${basePath}/`), '')
-                    .replace(/\\/g, '/');
-                }
-              } catch (error) {
-                continue;
-              }
-            }
-          }
-        } catch (error) {
-          continue;
-        }
-      }
-
-      console.warn(
-        `Warning: Could not resolve import '${importPath}' in '${cleanCurrentDir}'. ` +
-        `Tried extensions: ${extensions.join(', ')} and index files.`
-      );
-    } else {
-      // 文件名已有扩展名，尝试所有可能的基础路径
-      for (const currentBasePath of possibleBasePaths) {
-        const fullPath = join(currentBasePath, fileName);
+      // for (const currentBasePath of possibleBasePaths) {
+      // 1. 尝试直接添加扩展名
+      for (const ext of extensions) {
+        const fullPath = join(targetBasePath, fileName + ext);
         try {
           const stats = await stat(fullPath);
           if (stats.isFile()) {
             // 返回清理过的路径
-            return join(dirPath, fileName)
-              .replace(new RegExp(`^${basePath}/.*?/src/`), 'src/')
+            return join(dirPath, fileName + ext)
               .replace(new RegExp(`^${basePath}/`), '')
               .replace(/\\/g, '/');
           }
@@ -124,15 +77,54 @@ export class FileScanner {
           continue;
         }
       }
-      console.warn(`Warning: Could not find file '${resolvedPath}' referenced in '${cleanCurrentDir}'`);
+
+      // 2. 尝试查找 index 文件
+      const dirFullPath = join(targetBasePath, fileName);
+      try {
+        const stats = await stat(dirFullPath);
+        if (stats.isDirectory()) {
+          for (const ext of extensions) {
+            const indexPath = join(dirFullPath, 'index' + ext);
+            try {
+              const indexStats = await stat(indexPath);
+              if (indexStats.isFile()) {
+                return join(dirPath, fileName, 'index' + ext)
+                  .replace(new RegExp(`^${basePath}/`), '')
+                  .replace(/\\/g, '/');
+              }
+            } catch (error) {
+              continue;
+            }
+          }
+        }
+      } catch (error) {
+        // continue;
+      }
+      // }
+    } else {
+      // 文件名已有扩展名，尝试所有可能的基础路径
+      // for (const currentBasePath of possibleBasePaths) {
+      const fullPath = join(targetBasePath, fileName);
+      try {
+        const stats = await stat(fullPath);
+        if (stats.isFile()) {
+          return join(dirPath, fileName)
+            .replace(new RegExp(`^${basePath}/`), '')
+            .replace(/\\/g, '/');
+        }
+      } catch (error) {
+        // continue;
+      }
+      // }
     }
 
     return null;
   }
 
-  // 分析依赖文件
+  // [依赖文件按需分析]: 分析依赖文件
   protected async analyzeDependencies(content: string, filePath: string, basePath: string): Promise<string[]> {
     const dependencies: string[] = [];
+    // 匹配导入路径。示例: import { Button } from '@/components/Button'
     const importRegex = /(?:import|from)\s+['"]([^'"]+)['"]/g;
 
     // 移除多行注释
@@ -148,10 +140,12 @@ export class FileScanner {
     let match;
     // 遍历每一行，匹配导入路径
     while ((match = importRegex.exec(lines)) !== null) {
+      // 获取导入路径。示例: import { Button } from '@/components/Button'
       const importPath = match[1];
+      // 获取当前文件路径。示例: src/components/Button/index.ts
       const currentDir = dirname(filePath);
 
-      // 查找导入路径
+      // 查找导入路径。示例: src/components/Button/index.ts
       const resolvedPath = await this.findModuleFile(importPath, currentDir, basePath);
       // 如果导入路径存在，且不在依赖列表中，则添加到依赖列表
       if (resolvedPath && !dependencies.includes(resolvedPath)) {
@@ -219,14 +213,17 @@ export class FileScanner {
       return;
     }
 
-    // [核心步骤四]: 扫描目标文件
+    /** 
+     * 核心步骤四: 扫描目标文件
+     * 示例: fileInfo: { path: 'src/components/Button/index.ts', content: '...', size: 1024 }
+     */
     const fileInfo = await this.processFile(basePath, relativePath, options);
     // 如果文件存在，则添加到已处理文件集合，并添加到结果数组
     if (fileInfo) {
       this.processedFiles.add(relativePath);
       allFiles.push(fileInfo);
 
-      // 如果 includeDependencies 为 true，则分析依赖文件
+      // [依赖文件按需分析]: 如果 includeDependencies 为 true，则分析依赖文件
       if (options.includeDependencies !== false) {
         // 分析依赖文件
         const dependencies = await this.analyzeDependencies(fileInfo.content, relativePath, basePath);
@@ -248,11 +245,15 @@ export class FileScanner {
 
       // [核心步骤六]: 读取文件内容
       const content = await readFile(filePath, 'utf-8');
-      // 移除临时目录前缀，只保留项目相关路径
+      /**
+       * @desc 移除临时目录前缀，只保留项目相关路径
+       * 示例:
+       * filePath: repo/src/components/Button/index.ts
+       * relativePath: src/components/Button/index.ts
+       */
       const relativePath = filePath
-        .replace(new RegExp(`^${basePath}/.*?/src/`), 'src/') // 处理带临时目录的路径
-        .replace(new RegExp(`^${basePath}/`), '')             // 处理普通路径
-        .replace(/\\/g, '/');                                 // 统一使用正斜杠
+        .replace(new RegExp(`^${basePath}/`), '') // 去除临时目录前缀
+        .replace(/\\/g, '/'); // 统一使用正斜杠
 
       return {
         path: relativePath,
@@ -278,23 +279,29 @@ export class FileScanner {
         return null;
       }
 
-      // 规范化路径
+      /**
+       * @desc 规范化路径
+       * 示例:
+       * relativePath: src/components/Button/index.ts
+       * normalizedPath: src/components/Button/index.ts
+       */
       const normalizedPath = relativePath
         .replace(/^[\/\\]+/, '')  // 移除开头的斜杠
         .replace(/\\/g, '/');     // 统一使用正斜杠
 
-      // 获取基础路径和文件名部分
+      /**
+       * @desc 获取基础路径和文件名部分
+       * 示例:
+       * normalizedPath: src/components/Button/index.ts
+       * pathParts: ['src', 'components', 'Button', 'index.ts']
+       * fileName: 'index.ts'
+       * dirPath: 'src/components/Button'
+       * targetBasePath: ${basePath}/src/components/Button
+       */
       const pathParts = normalizedPath.split('/');
       const fileName = pathParts.pop() || '';
       const dirPath = pathParts.join('/');
-
-      // 构建完整的基础路径，包括可能的 src 目录
-      const possibleBasePaths = [
-        join(basePath, dirPath),
-        join(basePath, 'src', dirPath),
-        // 处理临时目录的情况
-        ...glob.sync(`${basePath}/*/src/${dirPath}`, { absolute: true })
-      ];
+      const targetBasePath = join(basePath, dirPath);
 
       // 可能的文件扩展名
       const extensions = ['.ts', '.tsx', '.js', '.jsx', '.vue'];
@@ -302,35 +309,25 @@ export class FileScanner {
       // [核心步骤五]: tryFindFile 尝试查找文件
       // 如果路径没有扩展名，尝试多种可能性
       if (!fileName.includes('.')) {
-        for (const currentBasePath of possibleBasePaths) {
-          // 1. 尝试直接添加扩展名
-          for (const ext of extensions) {
-            const fullPath = join(currentBasePath, fileName + ext);
-            const result = await this.tryFindFile(basePath, fullPath, options);
-            if (result) return result;
-          }
-
-          // 2. 尝试作为目录查找 index 文件
-          const dirFullPath = join(currentBasePath, fileName);
-          for (const ext of extensions) {
-            const indexPath = join(dirFullPath, 'index' + ext);
-            const result = await this.tryFindFile(basePath, indexPath, options);
-            if (result) return result;
-          }
-        }
-
-        console.warn(
-          `Warning: Could not find file ${fileName} in any possible location`
-        );
-      } else {
-        // 文件名已有扩展名，尝试所有可能的基础路径
-        for (const currentBasePath of possibleBasePaths) {
-          const fullPath = join(currentBasePath, fileName);
+        // 1. 尝试直接添加扩展名
+        for (const ext of extensions) {
+          const fullPath = join(targetBasePath, fileName + ext);
           const result = await this.tryFindFile(basePath, fullPath, options);
           if (result) return result;
         }
 
-        console.warn(`Warning: Could not find file ${normalizedPath}`);
+        // 2. 尝试作为目录查找 index 文件
+        const dirFullPath = join(targetBasePath, fileName);
+        for (const ext of extensions) {
+          const indexPath = join(dirFullPath, 'index' + ext);
+          const result = await this.tryFindFile(basePath, indexPath, options);
+          if (result) return result;
+        }
+      } else {
+        // 文件名已有扩展名，尝试所有可能的基础路径
+        const fullPath = join(targetBasePath, fileName);
+        const result = await this.tryFindFile(basePath, fullPath, options);
+        if (result) return result;
       }
 
       return null;

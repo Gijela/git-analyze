@@ -20,7 +20,7 @@ export class GitIngest {
     this.git = new GitAction();
     this.scanner = new FileScanner();
     this.config = {
-      tempDir: './temp',
+      tempDir: './repo',
       defaultMaxFileSize: 1024 * 1024, // 1MB
       defaultPatterns: {
         include: ['**/*'],
@@ -206,4 +206,4 @@ export type {
   AnalysisResult,
   GitIngestConfig,
   FileInfo
-}; 
+};

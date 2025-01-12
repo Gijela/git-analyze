@@ -1,12 +1,12 @@
 import Router from '@koa/router';
-import { GitIngest } from '../../../src/index.js';
+import { GitIngest } from '../../../src/index';
 
 const router = new Router();
 // 设置文件大小上限为 500KB
 const maxFileSize = 500 * 1024;
 // 初始化 GitIngest 实例，用于分析 Git 仓库
 const ingest = new GitIngest({
-  tempDir: "./temp-web",
+  tempDir: "./repo",
   keepTempFiles: false,
   defaultPatterns: {
     // 排除不需要分析的目录
