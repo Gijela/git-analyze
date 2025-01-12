@@ -2,7 +2,7 @@ import { simpleGit, SimpleGit } from 'simple-git';
 import { GitOperationError } from './errors';
 import { env } from '../utils/env';
 
-export class GitHandler {
+export class GitAction {
   private git: SimpleGit;
 
   constructor() {
@@ -41,4 +41,4 @@ export class GitHandler {
       throw new GitOperationError('checkout', (error as Error).message);
     }
   }
-} 
+}

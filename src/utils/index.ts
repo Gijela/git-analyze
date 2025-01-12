@@ -1,9 +1,11 @@
 import type { FileInfo } from '../types/index.js';
 
+// 估计文件内容 token 数量
 export function estimateTokens(content: string): number {
   return content.trim().split(/\s+/).length;
 }
 
+// 生成目录树
 export function generateTree(files: FileInfo[]): string {
   const tree: { [key: string]: any } = {};
 
@@ -44,6 +46,7 @@ export function generateTree(files: FileInfo[]): string {
   return stringify(tree);
 }
 
+// 生成项目概况
 export function generateSummary(files: FileInfo[], metadata: any): string {
   const fileTypes = new Map<string, number>();
 
@@ -65,6 +68,7 @@ export function generateSummary(files: FileInfo[], metadata: any): string {
   return summary;
 }
 
+// 格式化文件大小
 function formatSize(bytes: number): string {
   const units = ['B', 'KB', 'MB', 'GB'];
   let size = bytes;

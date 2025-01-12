@@ -1,23 +1,23 @@
-import { GitHandler } from './core/git.js';
-import { FileScanner } from './core/scanner.js';
+import { GitAction } from './core/gitAction';
+import { FileScanner } from './core/scanner';
 import type {
   AnalyzeOptions,
   AnalysisResult,
   GitIngestConfig,
   FileInfo
-} from './types/index.js';
-import { estimateTokens, generateTree, generateSummary } from './utils/index.js';
-import { GitIngestError, ValidationError, GitOperationError } from './core/errors.js';
+} from './types/index';
+import { estimateTokens, generateTree, generateSummary } from './utils/index';
+import { GitIngestError, ValidationError, GitOperationError } from './core/errors';
 import { mkdir, rm } from 'fs/promises';
 import { existsSync } from 'fs';
 
 export class GitIngest {
-  private git: GitHandler;
+  private git: GitAction;
   private scanner: FileScanner;
   private config: GitIngestConfig;
 
   constructor(config?: GitIngestConfig) {
-    this.git = new GitHandler();
+    this.git = new GitAction();
     this.scanner = new FileScanner();
     this.config = {
       tempDir: './temp',
@@ -65,6 +65,7 @@ export class GitIngest {
     return url.includes(this.config.customDomainMap.targetDomain);
   }
 
+  // [核心步骤0]: 开端，根据 url 按需获取仓库代码
   async analyzeFromUrl(
     url: string,
     options?: AnalyzeOptions
@@ -109,7 +110,7 @@ export class GitIngest {
         await this.git.checkoutBranch(workDir, options.branch);
       }
 
-      // 扫描文件
+      // [核心步骤一]: 调用扫描目录
       result = await this.analyzeFromDirectory(workDir, options);
 
       // 如果不保留临时文件，则清理
@@ -136,6 +137,7 @@ export class GitIngest {
     }
   }
 
+  // 分析扫描目录
   async analyzeFromDirectory(
     path: string,
     options?: AnalyzeOptions
@@ -149,6 +151,7 @@ export class GitIngest {
     }
 
     try {
+      // [核心步骤二]: 执行目录扫描
       const files = await this.scanner.scanDirectory(path, {
         maxFileSize: options?.maxFileSize || this.config.defaultMaxFileSize,
         includePatterns: options?.includePatterns || this.config.defaultPatterns?.include,
@@ -207,7 +210,7 @@ export class GitIngest {
 }
 
 // 导出错误类型
-export { GitIngestError, ValidationError, GitOperationError } from './core/errors.js';
+export { GitIngestError, ValidationError, GitOperationError } from './core/errors';
 
 // 导出类型定义
 export type {

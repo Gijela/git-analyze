@@ -22,6 +22,7 @@ const BINARY_FILE_TYPES = [
 export class FileScanner {
   protected processedFiles: Set<string> = new Set();
 
+  // 查找模块文件
   private async findModuleFile(importPath: string, currentDir: string, basePath: string): Promise<string | null> {
     // 处理外部依赖
     if (!importPath.startsWith('.')) {
@@ -129,6 +130,7 @@ export class FileScanner {
     return null;
   }
 
+  // 分析依赖文件
   protected async analyzeDependencies(content: string, filePath: string, basePath: string): Promise<string[]> {
     const dependencies: string[] = [];
     const importRegex = /(?:import|from)\s+['"]([^'"]+)['"]/g;
@@ -142,20 +144,26 @@ export class FileScanner {
       })
       .join('\n');
 
+    // 匹配导入路径
     let match;
+    // 遍历每一行，匹配导入路径
     while ((match = importRegex.exec(lines)) !== null) {
       const importPath = match[1];
       const currentDir = dirname(filePath);
 
+      // 查找导入路径
       const resolvedPath = await this.findModuleFile(importPath, currentDir, basePath);
+      // 如果导入路径存在，且不在依赖列表中，则添加到依赖列表
       if (resolvedPath && !dependencies.includes(resolvedPath)) {
         dependencies.push(resolvedPath);
       }
     }
 
+    // 返回依赖列表。示例：['src/components/Button/index.ts', 'src/components/Input/index.ts']
     return dependencies;
   }
 
+  // 扫描目录
   async scanDirectory(
     path: string,
     options: ScanOptions
@@ -165,11 +173,14 @@ export class FileScanner {
     }
 
     try {
+      // 清除已处理文件
       this.processedFiles.clear();
       const allFiles: FileInfo[] = [];
 
+      // 如果指定了目标文件路径，则扫描目标文件及其依赖文件
       if (options.targetPaths && options.targetPaths.length > 0) {
         for (const targetPath of options.targetPaths) {
+          // [核心步骤三]: 扫描目标文件及其依赖文件
           await this.processFileAndDependencies(path, targetPath, options, allFiles);
         }
         return allFiles;
@@ -197,6 +208,7 @@ export class FileScanner {
     }
   }
 
+  // 扫描目标文件及其依赖文件
   private async processFileAndDependencies(
     basePath: string,
     relativePath: string,
@@ -207,13 +219,18 @@ export class FileScanner {
       return;
     }
 
+    // [核心步骤四]: 扫描目标文件
     const fileInfo = await this.processFile(basePath, relativePath, options);
+    // 如果文件存在，则添加到已处理文件集合，并添加到结果数组
     if (fileInfo) {
       this.processedFiles.add(relativePath);
       allFiles.push(fileInfo);
 
+      // 如果 includeDependencies 为 true，则分析依赖文件
       if (options.includeDependencies !== false) {
+        // 分析依赖文件
         const dependencies = await this.analyzeDependencies(fileInfo.content, relativePath, basePath);
+        // 遍历依赖文件，递归扫描依赖文件
         for (const dep of dependencies) {
           await this.processFileAndDependencies(basePath, dep, options, allFiles);
         }
@@ -221,6 +238,7 @@ export class FileScanner {
     }
   }
 
+  // 尝试查找文件
   private async tryFindFile(basePath: string, filePath: string, options: ScanOptions): Promise<FileInfo | null> {
     try {
       const stats = await stat(filePath);
@@ -228,6 +246,7 @@ export class FileScanner {
         return null;
       }
 
+      // [核心步骤六]: 读取文件内容
       const content = await readFile(filePath, 'utf-8');
       // 移除临时目录前缀，只保留项目相关路径
       const relativePath = filePath
@@ -245,13 +264,16 @@ export class FileScanner {
     }
   }
 
+  // 扫描文件
   private async processFile(
     basePath: string,
     relativePath: string,
     options: ScanOptions
   ): Promise<FileInfo | null> {
     try {
+      // 获取文件扩展名
       const ext = relativePath.toLowerCase().split('.').pop();
+      // 如果文件是二进制文件，则跳过
       if (ext && BINARY_FILE_TYPES.includes(`.${ext}`)) {
         return null;
       }
@@ -277,6 +299,7 @@ export class FileScanner {
       // 可能的文件扩展名
       const extensions = ['.ts', '.tsx', '.js', '.jsx', '.vue'];
 
+      // [核心步骤五]: tryFindFile 尝试查找文件
       // 如果路径没有扩展名，尝试多种可能性
       if (!fileName.includes('.')) {
         for (const currentBasePath of possibleBasePaths) {
