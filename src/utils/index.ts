@@ -1,4 +1,4 @@
-import type { FileInfo } from '../types/index.js';
+import type { FileInfo } from '../types/index';
 
 // 估计文件内容 token 数量
 export function estimateTokens(content: string): number {
