@@ -6,10 +6,11 @@ import type {
   GitIngestConfig,
   FileInfo
 } from './types/index';
-import { estimateTokens, generateTree, generateSummary } from './utils/index';
+import { estimateTokens, generateTree, buildSizeTree } from './utils/index';
 import { GitIngestError, ValidationError, GitOperationError } from './core/errors';
 import { mkdir, rm } from 'fs/promises';
 import { existsSync } from 'fs';
+import crypto from 'crypto';
 
 export class GitIngest {
   private git: GitAction;
@@ -91,7 +92,7 @@ export class GitIngest {
     const repoMatch = githubUrl.match(/github\.com\/[^\/]+\/([^\/]+)/);
     const repoName = repoMatch ? repoMatch[1] : 'unknown';
     // 生成唯一标识符（使用时间戳的后6位作为唯一值）
-    const uniqueId = Date.now().toString().slice(-6);
+    const uniqueId = crypto.randomBytes(3).toString('base64url').slice(0, 4);
     const workDir = `${this.config.tempDir}/${repoName}-${uniqueId}`;
 
     let result: AnalysisResult;
@@ -119,9 +120,9 @@ export class GitIngest {
       }
 
       // 如果是自定义域名访问，添加额外信息
-      if (isCustomDomain) {
-        result.summary = `通过自定义域名 ${this.config.customDomainMap?.targetDomain} 访问\n原始仓库: ${githubUrl}\n\n${result.summary}`;
-      }
+      // if (isCustomDomain) {
+      //   result.summary = `通过自定义域名 ${this.config.customDomainMap?.targetDomain} 访问\n原始仓库: ${githubUrl}\n\n${result.summary}`;
+      // }
 
       return result;
     } catch (error) {
@@ -169,10 +170,11 @@ export class GitIngest {
 
       // 生成分析结果
       return {
-        summary: generateSummary(files, metadata),
-        tree: generateTree(files),
-        content: this.generateContent(files),
-        metadata
+        // summary: generateSummary(files, metadata),
+        metadata,
+        fileTree: generateTree(files),
+        totalCode: this.generateContent(files),
+        sizeTree: JSON.stringify(buildSizeTree(files), null, 2)
       };
     } catch (error) {
       if (error instanceof GitIngestError) {

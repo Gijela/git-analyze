@@ -23,14 +23,18 @@ export interface FileInfo {
 }
 
 export interface AnalysisResult {
-  summary: string;
-  tree: string;
-  content: string;
+  // 项目概况
   metadata: {
     files: number;
     size: number;
     tokens: number;
   };
+  // 文件树
+  fileTree: string;
+  // 总代码
+  totalCode: string;
+  // 文件大小树
+  sizeTree: string;
 }
 
 export interface GitIngestConfig {
