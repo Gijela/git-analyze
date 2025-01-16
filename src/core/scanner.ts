@@ -249,13 +249,13 @@ export class FileScanner {
        * @desc 移除临时目录前缀，只保留项目相关路径
        * 示例:
        * filePath: repo/github101-250644/src/core/gitAction.ts
-       * basePath: './repo/github101-492772'
+       * basePath: 'repo/github101-492772'
        * relativePath: repo/github101-250644/src/core/gitAction.ts
        */
-      const basePathParts = basePath.split('/'); // eg: ['.', 'repo', 'github101-492772']
+      const basePathParts = basePath.split('/'); // eg: ['repo', 'github101-492772']
       const deleteHashRepoName = basePathParts[basePathParts.length - 1].replace(/-[^-]*$/, ''); // github101
       const relativePath = filePath
-        .replace(new RegExp(`^${basePathParts[1]}/`), '') // 去除临时目录前缀 repo/
+        .replace(new RegExp(`^${basePathParts[0]}/`), '') // 去除临时目录前缀 repo/
         .replace(new RegExp(`^${basePathParts[basePathParts.length - 1]}`), deleteHashRepoName) // 去掉[-hash]
         .replace(/\\/g, '/'); // 统一使用正斜杠
 

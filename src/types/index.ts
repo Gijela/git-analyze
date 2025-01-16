@@ -38,15 +38,22 @@ export interface AnalysisResult {
 }
 
 export interface GitIngestConfig {
+  // 保存克隆仓库的临时目录名
   tempDir?: string;
+  /* 默认检索的最大的文件 */
   defaultMaxFileSize?: number;
+  /* 文件模式 */
   defaultPatterns?: {
+    /* 包含的文件/目录 */
     include?: string[];
+    /* 不会去检索的文件/目录 */
     exclude?: string[];
   };
+  /* 保留克隆的仓库 */
   keepTempFiles?: boolean;
+  /* 自定义域名 */
   customDomainMap?: {
     targetDomain: string;
     originalDomain: string;
   };
-} 
+}

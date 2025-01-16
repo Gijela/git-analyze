@@ -21,13 +21,13 @@ export class GitIngest {
     this.git = new GitAction();
     this.scanner = new FileScanner();
     this.config = {
-      tempDir: './repo',
-      defaultMaxFileSize: 1024 * 1024, // 1MB
+      tempDir: 'repo', // 默认保存仓库的目录名(不会暴露到外部)
+      keepTempFiles: false, // 默认不保留临时文件
+      defaultMaxFileSize: 1024 * 1024, // 默认检索不超过 1MB 的文件
       defaultPatterns: {
         include: ['**/*'],
         exclude: ['**/node_modules/**', '**/.git/**']
       },
-      keepTempFiles: false, // 默认不保留临时文件
       ...config
     };
   }
