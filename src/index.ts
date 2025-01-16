@@ -1,16 +1,20 @@
-import { GitAction } from './core/gitAction';
-import { FileScanner } from './core/scanner';
+import { GitAction } from "./core/gitAction";
+import { FileScanner } from "./core/scanner";
 import type {
   AnalyzeOptions,
   AnalysisResult,
   GitIngestConfig,
-  FileInfo
-} from './types/index';
-import { estimateTokens, generateTree, buildSizeTree } from './utils/index';
-import { GitIngestError, ValidationError, GitOperationError } from './core/errors';
-import { mkdir, rm } from 'fs/promises';
-import { existsSync } from 'fs';
-import crypto from 'crypto';
+  FileInfo,
+} from "./types/index";
+import { estimateTokens, generateTree, buildSizeTree } from "./utils/index";
+import {
+  GitIngestError,
+  ValidationError,
+  GitOperationError,
+} from "./core/errors";
+import { mkdir, rm } from "fs/promises";
+import { existsSync } from "fs";
+import crypto from "crypto";
 
 export class GitIngest {
   private git: GitAction;
@@ -21,14 +25,14 @@ export class GitIngest {
     this.git = new GitAction();
     this.scanner = new FileScanner();
     this.config = {
-      tempDir: 'repo', // 默认保存仓库的目录名(不会暴露到外部)
+      tempDir: "repo", // 默认保存仓库的目录名(不会暴露到外部)
       keepTempFiles: false, // 默认不保留临时文件
       defaultMaxFileSize: 1024 * 1024, // 默认检索不超过 1MB 的文件
       defaultPatterns: {
-        include: ['**/*'],
-        exclude: ['**/node_modules/**', '**/.git/**']
+        include: ["**/*"],
+        exclude: ["**/node_modules/**", "**/.git/**"],
       },
-      ...config
+      ...config,
     };
   }
 
@@ -39,7 +43,11 @@ export class GitIngest {
         await rm(dirPath, { recursive: true, force: true });
       }
     } catch (error) {
-      console.warn(`Warning: Failed to cleanup temporary directory ${dirPath}: ${(error as Error).message}`);
+      console.warn(
+        `Warning: Failed to cleanup temporary directory ${dirPath}: ${
+          (error as Error).message
+        }`
+      );
     }
   }
 
@@ -77,22 +85,22 @@ export class GitIngest {
     const githubUrl = this.transformCustomDomainUrl(url);
 
     if (!githubUrl) {
-      throw new ValidationError('URL is required');
+      throw new ValidationError("URL is required");
     }
 
     if (!githubUrl.match(/^https?:\/\//)) {
-      throw new ValidationError('Invalid URL format');
+      throw new ValidationError("Invalid URL format");
     }
 
     if (!this.config.tempDir) {
-      throw new ValidationError('Temporary directory is required');
+      throw new ValidationError("Temporary directory is required");
     }
 
     // 从URL中提取仓库名
     const repoMatch = githubUrl.match(/github\.com\/[^\/]+\/([^\/]+)/);
-    const repoName = repoMatch ? repoMatch[1] : 'unknown';
+    const repoName = repoMatch ? repoMatch[1] : "unknown";
     // 生成唯一标识符（使用时间戳的后6位作为唯一值）
-    const uniqueId = crypto.randomBytes(3).toString('base64url').slice(0, 4);
+    const uniqueId = crypto.randomBytes(3).toString("base64url").slice(0, 4);
     const workDir = `${this.config.tempDir}/${repoName}-${uniqueId}`;
 
     let result: AnalysisResult;
@@ -134,7 +142,9 @@ export class GitIngest {
       if (error instanceof GitIngestError) {
         throw error;
       }
-      throw new GitIngestError(`Failed to analyze repository: ${(error as Error).message}`);
+      throw new GitIngestError(
+        `Failed to analyze repository: ${(error as Error).message}`
+      );
     }
   }
 
@@ -144,7 +154,7 @@ export class GitIngest {
     options?: AnalyzeOptions
   ): Promise<AnalysisResult> {
     if (!path) {
-      throw new ValidationError('Path is required');
+      throw new ValidationError("Path is required");
     }
 
     if (!existsSync(path)) {
@@ -155,14 +165,16 @@ export class GitIngest {
       // [核心步骤二]: 执行目录扫描
       const files = await this.scanner.scanDirectory(path, {
         maxFileSize: options?.maxFileSize || this.config.defaultMaxFileSize,
-        includePatterns: options?.includePatterns || this.config.defaultPatterns?.include,
-        excludePatterns: options?.excludePatterns || this.config.defaultPatterns?.exclude,
+        includePatterns:
+          options?.includePatterns || this.config.defaultPatterns?.include,
+        excludePatterns:
+          options?.excludePatterns || this.config.defaultPatterns?.exclude,
         targetPaths: options?.targetPaths,
-        includeDependencies: true
+        includeDependencies: true,
       });
 
       if (files.length === 0) {
-        throw new ValidationError('No files found in the specified directory');
+        throw new ValidationError("No files found in the specified directory");
       }
 
       // 计算元数据
@@ -174,13 +186,15 @@ export class GitIngest {
         metadata,
         fileTree: generateTree(files),
         totalCode: this.generateContent(files),
-        sizeTree: JSON.stringify(buildSizeTree(files), null, 2)
+        sizeTree: JSON.stringify(buildSizeTree(files), null, 2),
       };
     } catch (error) {
       if (error instanceof GitIngestError) {
         throw error;
       }
-      throw new GitIngestError(`Failed to analyze directory: ${(error as Error).message}`);
+      throw new GitIngestError(
+        `Failed to analyze directory: ${(error as Error).message}`
+      );
     }
   }
 
@@ -188,24 +202,28 @@ export class GitIngest {
     return {
       files: files.length,
       size: files.reduce((acc, file) => acc + file.size, 0),
-      tokens: files.reduce((acc, file) => acc + estimateTokens(file.content), 0)
+      tokens: files.reduce(
+        (acc, file) => acc + estimateTokens(file.content),
+        0
+      ),
     };
   }
 
   private generateContent(files: FileInfo[]): string {
-    return files.map(file => {
-      return `File: ${file.path}\n${'='.repeat(40)}\n${file.content}\n\n`;
-    }).join('\n');
+    return files
+      .map((file) => {
+        return `File: ${file.path}\n${"=".repeat(40)}\n${file.content}\n\n`;
+      })
+      .join("\n");
   }
 }
 
 // 导出错误类型
-export { GitIngestError, ValidationError, GitOperationError } from './core/errors';
+export {
+  GitIngestError,
+  ValidationError,
+  GitOperationError,
+} from "./core/errors";
 
 // 导出类型定义
-export type {
-  AnalyzeOptions,
-  AnalysisResult,
-  GitIngestConfig,
-  FileInfo
-};
+export type { AnalyzeOptions, AnalysisResult, GitIngestConfig, FileInfo };

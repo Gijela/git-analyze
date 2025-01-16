@@ -2,7 +2,7 @@
 export class GitIngestError extends Error {
   constructor(message: string) {
     super(message);
-    this.name = 'GitIngestError';
+    this.name = "GitIngestError";
   }
 }
 
@@ -10,7 +10,7 @@ export class GitIngestError extends Error {
 export class GitOperationError extends GitIngestError {
   constructor(operation: string, details: string) {
     super(`Git operation '${operation}' failed: ${details}`);
-    this.name = 'GitOperationError';
+    this.name = "GitOperationError";
   }
 }
 
@@ -18,7 +18,7 @@ export class GitOperationError extends GitIngestError {
 export class FileProcessError extends GitIngestError {
   constructor(path: string, reason: string) {
     super(`Failed to process file '${path}': ${reason}`);
-    this.name = 'FileProcessError';
+    this.name = "FileProcessError";
   }
 }
 
@@ -26,7 +26,7 @@ export class FileProcessError extends GitIngestError {
 export class ValidationError extends GitIngestError {
   constructor(message: string) {
     super(`Validation failed: ${message}`);
-    this.name = 'ValidationError';
+    this.name = "ValidationError";
   }
 }
 
@@ -34,11 +34,11 @@ export class ValidationError extends GitIngestError {
 export class DependencyAnalysisError extends Error {
   constructor(
     public readonly filePath: string,
-    public readonly errorType: 'parse' | 'resolve' | 'analyze',
+    public readonly errorType: "parse" | "resolve" | "analyze",
     message: string
   ) {
     super(`[${errorType}] ${message} in file: ${filePath}`);
-    this.name = 'DependencyAnalysisError';
+    this.name = "DependencyAnalysisError";
   }
 }
 
@@ -50,6 +50,6 @@ export class GitAnalysisError extends Error {
     message: string
   ) {
     super(`Git analysis failed: ${message} (${operation} on ${target})`);
-    this.name = 'GitAnalysisError';
+    this.name = "GitAnalysisError";
   }
-} 
+}

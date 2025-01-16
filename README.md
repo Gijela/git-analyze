@@ -1,67 +1,121 @@
-好的，让我为您梳理当前项目已实现的功能：
+# GitHub101
 
-### 1. 核心分析功能
+A tool for analyzing Git repository code, supporting dependency analysis, file tree generation and other features.
 
-- ✅ 支持分析 GitHub 仓库代码
-- ✅ 支持分析本地目录代码
-- ✅ 智能解析代码依赖关系
-- ✅ 生成项目文件树结构
-- ✅ 统计项目基本信息（文件数、大小、Token数等）
-- ✅ 生成项目概要信息
-- ✅ 分析文件类型分布
+## Main Features
 
-### 2. Web 界面功能
+- Support code analysis from GitHub URL or local directory
+- Analyze project file dependencies based on given entry points, scan relevant files as needed
+- Generate project metadata (token consumption estimate, file size, file type)
+- Generate project file tree structure
+- Generate tree structure with file sizes and source code
+- Support file filtering and size limits
 
-- ✅ RESTful API 接口
-  - `/analyze/local` - 分析本地目录
-  - `/analyze/github` - 分析 GitHub 仓库
-  - `/:owner/:repo` - 直接访问 GitHub 仓库分析
-  - `/health` - 健康检查接口
-- ✅ 可视化展示
-  - 项目基本信息展示
-  - 文件树可视化
-  - 项目概要展示
-  - 文件内容展示
-- ✅ 跨域支持 (CORS)
-- ✅ 静态文件服务
+## Workflow
 
-### 3. 配置功能
+1. **Code Retrieval**
 
-- ✅ 临时文件管理
-  - 自动清理临时文件
-  - 可配置是否保留临时文件
-- ✅ 文件过滤
-  - 文件大小限制
-  - 文件类型过滤
-  - 自定义包含/排除模式
-- ✅ 代理支持
-  - HTTP 代理
-  - HTTPS 代理
+   - Support cloning from GitHub URL
+   - Support specifying local directory
+   - Support custom domain mapping to GitHub
 
-### 4. 错误处理
+2. **File Scanning**
 
-- ✅ 自定义错误类型
-- ✅ 错误日志记录
-- ✅ 请求日志记录
-- ✅ 友好的错误提示
+   - Recursively scan directory structure
+   - Filter binary files
+   - Support file size limits
+   - Support custom file include/exclude rules
 
-### 5. 性能优化
+3. **Dependency Analysis**
 
-- ✅ 异步文件处理
-- ✅ 文件大小限制（默认 500KB）
-- ✅ 二进制文件过滤
-- ✅ 注释和空行过滤
+   - Analyze import/require statements
+   - Build dependency graph
+   - Support relative path resolution
+   - Support multiple file extensions
 
-### 6. 安全特性
+4. **Result Generation**
+   - Generate file tree structure
+   - Calculate code metrics and file sizes
+   - Generate project metadata
+   - Output complete analysis report
 
-- ✅ 文件大小限制
-- ✅ 路径规范化
-- ✅ 错误信息过滤
+## Usage Example
 
-### 7. 开发支持
+```typescript
+import { GitIngest } from "github101";
 
-- ✅ TypeScript 支持
-- ✅ ESM 模块支持
-- ✅ 完整的类型定义
+// Create instance
+const gitIngest = new GitIngest({
+  tempDir: "temp",
+  defaultMaxFileSize: 1024 * 1024, // 1MB
+  defaultPatterns: {
+    include: ["**/*"],
+    exclude: ["**/node_modules/**"],
+  },
+});
 
-这个项目主要面向代码分析和 LLM 上下文准备，提供了完整的分析功能和友好的使用界面。
+// Analyze from GitHub URL
+const result = await gitIngest.analyzeFromUrl(
+  "https://github.com/username/repo",
+  {
+    branch: "main",
+    targetPaths: ["src/"],
+  }
+);
+
+// Analyze from local directory
+const result = await gitIngest.analyzeFromDirectory("./my-project", {
+  maxFileSize: 2 * 1024 * 1024,
+  includePatterns: ["src/**/*.ts"],
+});
+
+// Analysis results
+console.log(result.metadata); // Project metadata
+console.log(result.fileTree); // File tree structure
+console.log(result.sizeTree); // File size tree
+console.log(result.totalCode); // Total code content
+```
+
+## Configuration Options
+
+### GitIngestConfig
+
+```typescript
+interface GitIngestConfig {
+  tempDir?: string; // Temporary directory
+  defaultMaxFileSize?: number; // Maximum file size
+  defaultPatterns?: {
+    include?: string[]; // File patterns to include
+    exclude?: string[]; // File patterns to exclude
+  };
+  keepTempFiles?: boolean; // Whether to keep temporary files
+  customDomainMap?: {
+    // Custom domain mapping
+    targetDomain: string;
+    originalDomain: string;
+  };
+}
+```
+
+### AnalyzeOptions
+
+```typescript
+interface AnalyzeOptions {
+  maxFileSize?: number; // Maximum size per file
+  includePatterns?: string[]; // File patterns to include
+  excludePatterns?: string[]; // File patterns to exclude
+  targetPaths?: string[]; // Target file paths
+  branch?: string; // Git branch
+  commit?: string; // Git commit
+}
+```
+
+## Installation
+
+```bash
+npm install github101
+```
+
+## License
+
+MIT

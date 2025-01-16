@@ -1,6 +1,7 @@
 {
-  "name": "gitingest-ts",
-  "version": "0.1.0",
+  "name": "github101",
+  "version": "1.0.0",
+  "description": "A tool for analyzing Git repositories ",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -16,7 +17,6 @@
   "scripts": {
     "dev": "tsup src/index.ts --format esm --watch",
     "build": "tsup src/index.ts --format esm --dts --clean",
-    "lint": "eslint src --ext .ts",
     "format": "prettier --write \"src/**/*.ts\""
   },
   "dependencies": {
@@ -26,6 +26,18 @@
     "typescript": "^5.7.2"
   },
   "devDependencies": {
+    "@types/node": "^22.10.7",
     "tsup": "^8.3.5"
+  },
+  "author": "Gijela",
+  "keywords": [
+    "git",
+    "analysis",
+    "ingest",
+    "code review"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Gijela/github101.git"
   }
 }

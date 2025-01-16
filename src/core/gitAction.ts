@@ -1,5 +1,5 @@
-import { simpleGit, SimpleGit } from 'simple-git';
-import { GitOperationError } from './errors';
+import { simpleGit, SimpleGit } from "simple-git";
+import { GitOperationError } from "./errors";
 
 export class GitAction {
   private git: SimpleGit;
@@ -12,7 +12,7 @@ export class GitAction {
     try {
       await this.git.clone(url, path);
     } catch (error) {
-      throw new GitOperationError('clone', (error as Error).message);
+      throw new GitOperationError("clone", (error as Error).message);
     }
   }
 
@@ -21,7 +21,7 @@ export class GitAction {
       const git = simpleGit(path);
       await git.checkout(branch);
     } catch (error) {
-      throw new GitOperationError('checkout', (error as Error).message);
+      throw new GitOperationError("checkout", (error as Error).message);
     }
   }
 }

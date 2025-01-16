@@ -1,4 +1,4 @@
-import type { FileInfo } from '../types/index';
+import type { FileInfo } from "../types/index";
 
 // 估计文件内容 token 数量
 export function estimateTokens(content: string): number {
@@ -10,7 +10,7 @@ export function generateTree(files: FileInfo[]): string {
   const tree: { [key: string]: any } = {};
 
   for (const file of files) {
-    const parts = file.path.split('/');
+    const parts = file.path.split("/");
     let current = tree;
 
     for (const part of parts.slice(0, -1)) {
@@ -23,17 +23,17 @@ export function generateTree(files: FileInfo[]): string {
     current[parts[parts.length - 1]] = null;
   }
 
-  function stringify(node: any, prefix = ''): string {
-    let result = '';
+  function stringify(node: any, prefix = ""): string {
+    let result = "";
     const entries = Object.entries(node);
 
     for (let i = 0; i < entries.length; i++) {
       const [key, value] = entries[i];
       const isLast = i === entries.length - 1;
-      const connector = isLast ? '└── ' : '├── ';
-      const childPrefix = isLast ? '    ' : '│   ';
+      const connector = isLast ? "└── " : "├── ";
+      const childPrefix = isLast ? "    " : "│   ";
 
-      result += prefix + connector + key + '\n';
+      result += prefix + connector + key + "\n";
 
       if (value !== null) {
         result += stringify(value, prefix + childPrefix);
@@ -94,15 +94,15 @@ interface TreeNode {
 export function buildSizeTree(files: FileInfo[]): TreeNode {
   // 创建根节点
   const root: TreeNode = {
-    name: 'root',
+    name: "root",
     size: 0,
     children: {},
-    isFile: false
+    isFile: false,
   };
 
   // 构建树结构
   for (const file of files) {
-    const parts = file.path.split('/');
+    const parts = file.path.split("/");
     let current = root;
 
     // 遍历路径的每一部分
@@ -116,7 +116,7 @@ export function buildSizeTree(files: FileInfo[]): TreeNode {
           size: isLastPart ? file.size : 0,
           ...(isLastPart && file.content ? { content: file.content } : {}),
           children: {},
-          isFile: isLastPart
+          isFile: isLastPart,
         };
       }
 
