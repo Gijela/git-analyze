@@ -6,7 +6,7 @@ import type {
   GitIngestConfig,
   FileInfo,
 } from "./types/index";
-import { estimateTokens, generateTree, buildSizeTree } from "./utils/index";
+import { generateTree, buildSizeTree, estimateTokens } from "./utils/index";
 import {
   GitIngestError,
   ValidationError,
@@ -44,8 +44,7 @@ export class GitIngest {
       }
     } catch (error) {
       console.warn(
-        `Warning: Failed to cleanup temporary directory ${dirPath}: ${
-          (error as Error).message
+        `Warning: Failed to cleanup temporary directory ${dirPath}: ${(error as Error).message
         }`
       );
     }
@@ -177,16 +176,16 @@ export class GitIngest {
         throw new ValidationError("No files found in the specified directory");
       }
 
-      // 计算元数据
-      const metadata = this.calculateMetadata(files);
-
       // 生成分析结果
       return {
         // summary: generateSummary(files, metadata),
-        metadata,
+        metadata: {
+          files: files.length,
+          tokens: files.reduce((acc, file) => acc + file.token, 0),
+        },
+        totalCode: files,
         fileTree: generateTree(files),
-        totalCode: this.generateContent(files),
-        sizeTree: JSON.stringify(buildSizeTree(files), null, 2),
+        sizeTree: buildSizeTree(files),
       };
     } catch (error) {
       if (error instanceof GitIngestError) {
@@ -196,25 +195,6 @@ export class GitIngest {
         `Failed to analyze directory: ${(error as Error).message}`
       );
     }
-  }
-
-  private calculateMetadata(files: FileInfo[]) {
-    return {
-      files: files.length,
-      size: files.reduce((acc, file) => acc + file.size, 0),
-      tokens: files.reduce(
-        (acc, file) => acc + estimateTokens(file.content),
-        0
-      ),
-    };
-  }
-
-  private generateContent(files: FileInfo[]): string {
-    return files
-      .map((file) => {
-        return `File: ${file.path}\n${"=".repeat(40)}\n${file.content}\n\n`;
-      })
-      .join("\n");
   }
 }
 

@@ -18,23 +18,49 @@ export interface FileInfo {
   path: string;
   // 文件内容
   content: string;
-  // 文件大小
-  size: number;
+  // 文件预估消耗 token 数量
+  token: number;
 }
 
 export interface AnalysisResult {
   // 项目概况
   metadata: {
     files: number;
-    size: number;
     tokens: number;
   };
   // 文件树
   fileTree: string;
   // 总代码
-  totalCode: string;
-  // 文件大小树
-  sizeTree: string;
+  totalCode: {
+    // 文件路径
+    path: string;
+    // 文件内容
+    content: string;
+    // 文件预估消耗 token 数量
+    token: number;
+  }[];
+  // 文件大小树，表示文件及其子文件夹的大小结构
+  sizeTree: {
+    // 文件或文件夹的名称
+    name: string;
+    // 文件或文件夹预估消耗 token 数量
+    token: number;
+    // 是否为文件
+    isFile: boolean;
+    // 子文件或子文件夹的集合
+    children?: {
+      [key: string]: {
+        // 子文件或子文件夹的名称
+        name: string;
+        // 子文件或子文件夹预估消耗 token 数量
+        token: number;
+        // 子文件或子文件夹的集合
+        children?: any; // 递归定义，允许嵌套
+        // 是否为文件
+        isFile: boolean;
+      };
+    };
+  };
 }
 
 export interface GitIngestConfig {

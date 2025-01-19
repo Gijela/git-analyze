@@ -3,6 +3,7 @@ import { readFile, stat } from "fs/promises";
 import type { FileInfo } from "../types/index";
 import { FileProcessError, ValidationError } from "./errors";
 import { dirname, join } from "path";
+import { estimateTokens } from "../utils";
 
 interface ScanOptions {
   maxFileSize?: number;
@@ -310,7 +311,8 @@ export class FileScanner {
       return {
         path: relativePath,
         content,
-        size: stats.size,
+        // size: stats.size,
+        token: estimateTokens(content),
       };
     } catch (error) {
       return null;

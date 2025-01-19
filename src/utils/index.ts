@@ -1,8 +1,20 @@
 import type { FileInfo } from "../types/index";
 
-// 估计文件内容 token 数量
-export function estimateTokens(content: string): number {
-  return content.trim().split(/\s+/).length;
+// 估计内容 token 数量
+export function estimateTokens(text: string): number {
+  // 1. 计算中文字符数量
+  const chineseChars = (text.match(/[\u4e00-\u9fff]/g) || []).length;
+
+  // 2. 计算英文单词数量（包括数字和标点）
+  const otherChars = text.length - chineseChars;
+
+  // 3. 计算总 token：
+  // - 中文字符通常是 1:1 或 1:2 的比例，保守起见使用 2
+  // - 其他字符按照 1:0.25 的比例
+  const estimatedTokens = chineseChars * 2 + Math.ceil(otherChars / 4);
+
+  // 4. 添加 10% 的安全余量
+  return Math.ceil(estimatedTokens * 1.1);
 }
 
 // 生成目录树
@@ -46,45 +58,9 @@ export function generateTree(files: FileInfo[]): string {
   return stringify(tree);
 }
 
-// 生成项目概况
-// export function generateSummary(files: FileInfo[], metadata: any): string {
-//   const fileTypes = new Map<string, number>();
-
-//   for (const file of files) {
-//     const ext = file.path.split('.').pop() || 'unknown';
-//     fileTypes.set(ext, (fileTypes.get(ext) || 0) + 1);
-//   }
-
-//   let summary = `项目概况:\n`;
-//   summary += `- 总文件数: ${metadata.files}\n`;
-//   summary += `- 总大小: ${formatSize(metadata.size)}\n`;
-//   summary += `- 预估Token数: ${metadata.tokens}\n\n`;
-
-//   summary += `文件类型分布:\n`;
-//   for (const [ext, count] of fileTypes) {
-//     summary += `- ${ext}: ${count} 个文件\n`;
-//   }
-
-//   return summary;
-// }
-
-// 格式化文件大小
-// function formatSize(bytes: number): string {
-//   const units = ['B', 'KB', 'MB', 'GB'];
-//   let size = bytes;
-//   let unitIndex = 0;
-
-//   while (size >= 1024 && unitIndex < units.length - 1) {
-//     size /= 1024;
-//     unitIndex++;
-//   }
-
-//   return `${size.toFixed(2)} ${units[unitIndex]}`;
-// }
-
 interface TreeNode {
   name: string;
-  size: number;
+  token: number;
   content?: string;
   children: { [key: string]: TreeNode };
   isFile: boolean;
@@ -95,7 +71,7 @@ export function buildSizeTree(files: FileInfo[]): TreeNode {
   // 创建根节点
   const root: TreeNode = {
     name: "root",
-    size: 0,
+    token: 0,
     children: {},
     isFile: false,
   };
@@ -113,7 +89,7 @@ export function buildSizeTree(files: FileInfo[]): TreeNode {
       if (!current.children[part]) {
         current.children[part] = {
           name: part,
-          size: isLastPart ? file.size : 0,
+          token: isLastPart ? file.token : 0,
           ...(isLastPart && file.content ? { content: file.content } : {}),
           children: {},
           isFile: isLastPart,
@@ -127,15 +103,15 @@ export function buildSizeTree(files: FileInfo[]): TreeNode {
   // 计算每个目录的总大小
   function calculateSize(node: TreeNode): number {
     if (node.isFile) {
-      return node.size;
+      return node.token;
     }
 
-    let totalSize = 0;
+    let totalToken = 0;
     for (const child of Object.values(node.children)) {
-      totalSize += calculateSize(child);
+      totalToken += calculateSize(child);
     }
-    node.size = totalSize;
-    return totalSize;
+    node.token = totalToken;
+    return totalToken;
   }
 
   calculateSize(root);
