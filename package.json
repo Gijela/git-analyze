@@ -1,6 +1,6 @@
 {
   "name": "github101",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "A tool for analyzing Git repositories ",
   "type": "module",
   "main": "./dist/index.js",
@@ -38,6 +38,6 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Gijela/github101.git"
+    "url": "git+https://github.com/Gijela/github101.git"
   }
 }
