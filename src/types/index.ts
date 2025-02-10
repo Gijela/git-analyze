@@ -61,8 +61,17 @@ export interface AnalysisResult {
       };
     };
   };
+  // 代码分析
+  codeAnalysis: CodeAnalysis;
 }
 
+export interface CodeAnalysis {
+  codeIndex: Map<string, any[]>;
+  knowledgeGraph: {
+    nodes: any[];
+    edges: any[];
+  };
+}
 export interface GitIngestConfig {
   // 保存克隆仓库的临时目录名
   tempDir?: string;

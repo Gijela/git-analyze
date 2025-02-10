@@ -1,10 +1,14 @@
 import { GitAction } from "./core/gitAction";
 import { FileScanner } from "./core/scanner";
+import { CodeAnalyzer } from "./core/codeAnalyzer";
+import { promises as fs } from "fs";
+import path from 'path';  // 添加 path 模块
 import type {
   AnalyzeOptions,
   AnalysisResult,
   GitIngestConfig,
   FileInfo,
+  CodeAnalysis
 } from "./types/index";
 import { generateTree, buildSizeTree, estimateTokens } from "./utils/index";
 import {
@@ -19,11 +23,13 @@ import crypto from "crypto";
 export class GitIngest {
   private git: GitAction;
   private scanner: FileScanner;
+  private analyzer: CodeAnalyzer;
   private config: GitIngestConfig;
 
   constructor(config?: GitIngestConfig) {
     this.git = new GitAction();
     this.scanner = new FileScanner();
+    this.analyzer = new CodeAnalyzer();
     this.config = {
       tempDir: "repo", // 默认保存仓库的目录名(不会暴露到外部)
       keepTempFiles: false, // 默认不保留临时文件
@@ -149,20 +155,19 @@ export class GitIngest {
 
   // 分析扫描目录
   async analyzeFromDirectory(
-    path: string,
+    dirPath: string,
     options?: AnalyzeOptions
   ): Promise<AnalysisResult> {
-    if (!path) {
+    if (!dirPath) {
       throw new ValidationError("Path is required");
     }
 
-    if (!existsSync(path)) {
-      throw new ValidationError(`Directory not found: ${path}`);
+    if (!existsSync(dirPath)) {
+      throw new ValidationError(`Directory not found: ${dirPath}`);
     }
 
     try {
-      // [核心步骤二]: 执行目录扫描
-      const files = await this.scanner.scanDirectory(path, {
+      const files = await this.scanner.scanDirectory(dirPath, {
         maxFileSize: options?.maxFileSize || this.config.defaultMaxFileSize,
         includePatterns:
           options?.includePatterns || this.config.defaultPatterns?.include,
@@ -176,9 +181,36 @@ export class GitIngest {
         throw new ValidationError("No files found in the specified directory");
       }
 
-      // 生成分析结果
+      // 重置分析器状态
+      this.analyzer = new CodeAnalyzer();
+      
+      // 分析代码并构建索引和知识图谱
+      for (const file of files) {
+        try {
+          // 确保是 TypeScript/JavaScript 文件
+          if (/\.(ts|js|tsx|jsx)$/i.test(file.path)) {
+            // 使用 file.content 而不是重新读取文件
+            const content = file.content;
+            // 使用绝对路径
+            const absolutePath = path.resolve(dirPath, file.path);
+            
+            console.log(`Analyzing file: ${absolutePath}`); // 添加日志
+            this.analyzer.analyzeCode(absolutePath, content);
+          }
+        } catch (error) {
+          console.warn(
+            `Warning: Failed to analyze file ${file.path}: ${(error as Error).message}`
+          );
+        }
+      }
+
+      // 获取分析结果
+      const codeIndex = this.analyzer.getCodeIndex();
+      const knowledgeGraph = this.analyzer.getKnowledgeGraph();
+
+      console.log(`Analysis complete. Found ${codeIndex.size} code elements`); // 添加日志
+
       return {
-        // summary: generateSummary(files, metadata),
         metadata: {
           files: files.length,
           tokens: files.reduce((acc, file) => acc + file.token, 0),
@@ -186,6 +218,10 @@ export class GitIngest {
         totalCode: files,
         fileTree: generateTree(files),
         sizeTree: buildSizeTree(files),
+        codeAnalysis: {
+          codeIndex: codeIndex,
+          knowledgeGraph: knowledgeGraph
+        }
       };
     } catch (error) {
       if (error instanceof GitIngestError) {
@@ -206,4 +242,4 @@ export {
 } from "./core/errors";
 
 // 导出类型定义
-export type { AnalyzeOptions, AnalysisResult, GitIngestConfig, FileInfo };
+export type { AnalyzeOptions, AnalysisResult, GitIngestConfig, FileInfo, CodeAnalysis };
