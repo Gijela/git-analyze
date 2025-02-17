@@ -1,5 +1,6 @@
 import { GitIngest } from '../src';
 import express from 'express';
+import { searchKnowledgeGraph, type SearchOptions } from '../src/utils/graphSearch';
 
 const app = express();
 const port = 3789;
@@ -16,11 +17,11 @@ const ingest = new GitIngest({
 
 app.use(express.json());
 
-async function main() {
-  const result = await ingest.analyzeFromUrl('https://github.com/Gijela/github101', {
-    branch: 'main',
-    targetPaths: ['src/index.ts'],
-    maxFileSize: 1000000
+async function main(url: string, branch: string, targetPaths: string[], maxFileSize: number) {
+  const result = await ingest.analyzeFromUrl(url, {
+    branch,
+    targetPaths,
+    maxFileSize
   });
 
   // 详细打印文件树结构
@@ -35,7 +36,7 @@ async function main() {
   // console.log('\n=== 代码分析结果 ===');
   // console.log('知识图谱节点:', JSON.stringify(result.codeAnalysis.knowledgeGraph.nodes, null, 12));
   // console.log('知识图谱边:', JSON.stringify(result.codeAnalysis.knowledgeGraph.edges, null, 2));
-  
+
   // 打印代码索引
   console.log('\n=== 代码索引详情 ===', Object.fromEntries(result.codeAnalysis.codeIndex));
   // for (const [name, elements] of result.codeAnalysis.codeIndex) {
@@ -49,8 +50,9 @@ async function main() {
 // 添加API路由
 app.post('/analyze', async (req, res) => {
   try {
-    const { fileTree, codeAnalysis } = await main();
-    
+    const { url, branch, targetPaths, maxFileSize } = req.body;
+    const { fileTree, codeAnalysis } = await main(url, branch, targetPaths, maxFileSize);
+
     res.json({
       success: true,
       data: {
@@ -61,6 +63,21 @@ app.post('/analyze', async (req, res) => {
         }
       }
     });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// 更新搜索API路由
+app.post('/search', async (req, res) => {
+  try {
+    const { knowledgeGraph, ...rest } = req.body;
+    const searchResults = searchKnowledgeGraph(knowledgeGraph, rest);
+
+    res.json({ success: true, data: searchResults });
   } catch (error) {
     res.status(500).json({
       success: false,

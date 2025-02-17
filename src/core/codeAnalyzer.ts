@@ -40,8 +40,8 @@ export class CodeAnalyzer {
   constructor() {
     // 初始化 Tree-sitter
     this.parser = new Parser();
-    this.parser.setLanguage(TypeScript.typescript);
-    
+    this.parser.setLanguage(TypeScript.typescript as any);
+
     this.codeIndex = new Map();
     this.knowledgeGraph = { nodes: [], edges: [] };
     this.currentFile = '';
@@ -80,27 +80,27 @@ export class CodeAnalyzer {
       case 'arrow_function':     // 添加箭头函数
         this.analyzeFunctionDeclaration(node);
         break;
-        
+
       case 'class_declaration':
       case 'class':             // 添加类表达式
         this.analyzeClassDeclaration(node);
         break;
-        
+
       case 'interface_declaration':
       case 'type_alias_declaration':  // 添加类型别名
         this.analyzeInterfaceDeclaration(node);
         break;
-        
+
       case 'call_expression':
       case 'new_expression':    // 添加 new 表达式
         this.analyzeCallExpression(node);
         break;
-        
+
       case 'import_declaration':
       case 'import_statement':
         this.analyzeImportStatement(node);
         break;
-        
+
       case 'variable_declaration':    // 添加变量声明
         this.analyzeVariableDeclaration(node);
         break;
@@ -206,7 +206,7 @@ export class CodeAnalyzer {
   private analyzeCallExpression(node: Parser.SyntaxNode): void {
     let functionName = '';
     const functionNode = node.childForFieldName('function');
-    
+
     if (functionNode) {
       // 处理简单的函数调用
       functionName = functionNode.text;

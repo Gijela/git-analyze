@@ -117,3 +117,5 @@ export function buildSizeTree(files: FileInfo[]): TreeNode {
   calculateSize(root);
   return root;
 }
+
+export * from './graphSearch';
