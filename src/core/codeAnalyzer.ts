@@ -1,18 +1,31 @@
 import Parser from 'tree-sitter';
 import TypeScript from 'tree-sitter-typescript';
+import path from 'path';
+import fs from 'fs';
 
 // 代码元素类型定义
-type ElementType = 'function' | 'class' | 'interface' | 'variable' | 'import';
+type ElementType = 
+  | 'function' 
+  | 'class' 
+  | 'interface' 
+  | 'variable' 
+  | 'import'
+  | 'constructor'
+  | 'class_method'
+  | 'type_alias';
 
 // 代码元素接口
 interface CodeElement {
-  type: string;
+  id?: string;
+  type: ElementType;
   name: string;
+  filePath: string;
+  className?: string;
   location: {
     file: string;
     line: number;
   };
-  implementation?: string;
+  // implementation?: string;
 }
 
 // 代码关系类型
@@ -36,6 +49,9 @@ export class CodeAnalyzer {
   private codeIndex: Map<string, CodeElement[]>;
   private knowledgeGraph: KnowledgeGraph;
   private currentFile: string;
+  private currentClass: string | null = null;
+  private currentFunctionId: string | null = null;
+  private scopeStack: string[] = [];
 
   constructor() {
     // 初始化 Tree-sitter
@@ -51,8 +67,11 @@ export class CodeAnalyzer {
    * 分析代码文件
    */
   public analyzeCode(filePath: string, sourceCode: string): void {
+    if (!filePath) {
+      throw new Error('File path cannot be undefined');
+    }
+    this.currentFile = filePath;
     try {
-      this.currentFile = filePath;
       console.log(`[CodeAnalyzer] Processing file: ${filePath}`);
 
       const tree = this.parser.parse(sourceCode);
@@ -87,8 +106,11 @@ export class CodeAnalyzer {
         break;
 
       case 'interface_declaration':
+        this.analyzeInterface(node);
+        break;
+
       case 'type_alias_declaration':  // 添加类型别名
-        this.analyzeInterfaceDeclaration(node);
+        this.analyzeTypeAlias(node);
         break;
 
       case 'call_expression':
@@ -103,6 +125,10 @@ export class CodeAnalyzer {
 
       case 'variable_declaration':    // 添加变量声明
         this.analyzeVariableDeclaration(node);
+        break;
+
+      case 'implements_clause':
+        this.analyzeImplementsRelation(node);
         break;
     }
 
@@ -122,49 +148,59 @@ export class CodeAnalyzer {
     const element: CodeElement = {
       type: 'function',
       name: nameNode.text,
+      filePath: this.currentFile,
       location: {
         file: this.currentFile,
         line: nameNode.startPosition.row + 1
-      },
-      implementation: node.text
+      }
     };
 
+    // 设置当前函数上下文
+    this.currentFunctionId = `${this.currentFile}#${nameNode.text}`;
+    this.scopeStack.push(this.currentFunctionId);  // 使用栈维护嵌套调用
     this.addCodeElement(element);
+    this.currentFunctionId = null; // 重置上下文
   }
 
   /**
    * 分析类声明
    */
   private analyzeClassDeclaration(node: Parser.SyntaxNode): void {
-    const nameNode = node.childForFieldName('name');
-    if (!nameNode) return;
+    const classNameNode = node.childForFieldName('name');
+    if (!classNameNode) return;
 
+    this.currentClass = classNameNode.text; // 设置当前类
+    const className = classNameNode.text;
     const element: CodeElement = {
       type: 'class',
-      name: nameNode.text,
+      name: className,
+      filePath: this.currentFile,
       location: {
         file: this.currentFile,
-        line: nameNode.startPosition.row + 1
-      },
-      implementation: node.text
+        line: classNameNode.startPosition.row + 1
+      }
     };
-
     this.addCodeElement(element);
 
     // 分析继承和实现关系
     for (const child of node.children) {
       if (child.type === 'extends_clause') {
         const baseClass = child.text.replace('extends ', '');
-        this.addRelation({
-          source: element.name,
-          target: baseClass,
-          type: 'extends'
-        });
+        const sourceId = `${this.currentFile}#${className}`;
+        const targetId = this.resolveTypeReference(baseClass); // 新方法解析类型引用
+        
+        if (targetId) {
+          this.addRelation({
+            source: sourceId,
+            target: targetId,
+            type: 'extends'
+          });
+        }
       } else if (child.type === 'implements_clause') {
         const interfaces = child.text.replace('implements ', '').split(',');
         interfaces.forEach(iface => {
           this.addRelation({
-            source: element.name,
+            source: `${this.currentFile}#${className}`,
             target: iface.trim(),
             type: 'implements'
           });
@@ -173,56 +209,52 @@ export class CodeAnalyzer {
     }
 
     // 分析类的方法
-    for (const child of node.children) {
-      if (child.type === 'method_definition') {
-        this.analyzeFunctionDeclaration(child);
-      }
-    }
+    node.children
+      .filter(child => child.type === 'method_definition')
+      .forEach(method => this.analyzeClassMethod(method, this.currentClass!));
+    
+    this.currentClass = null; // 重置类上下文
   }
 
   /**
    * 分析接口声明
    */
-  private analyzeInterfaceDeclaration(node: Parser.SyntaxNode): void {
+  private analyzeInterface(node: Parser.SyntaxNode): void {
     const nameNode = node.childForFieldName('name');
     if (!nameNode) return;
 
     const element: CodeElement = {
       type: 'interface',
       name: nameNode.text,
+      filePath: this.currentFile,
       location: {
         file: this.currentFile,
         line: nameNode.startPosition.row + 1
       },
-      implementation: node.text
+      id: `${this.currentFile}#Interface#${nameNode.text}`
     };
-
     this.addCodeElement(element);
   }
 
   /**
    * 分析函数调用
    */
-  private analyzeCallExpression(node: Parser.SyntaxNode): void {
-    let functionName = '';
-    const functionNode = node.childForFieldName('function');
-
-    if (functionNode) {
-      // 处理简单的函数调用
-      functionName = functionNode.text;
-    } else {
-      // 处理方法调用 (obj.method())
-      const memberNode = node.child(0);
-      if (memberNode && memberNode.type === 'member_expression') {
-        functionName = memberNode.text;
-      }
-    }
-
-    if (functionName) {
+  private analyzeCallExpression(node: Parser.SyntaxNode) {
+    const callee = this.resolveCallee(node);
+    const caller = this.scopeStack[this.scopeStack.length - 1];
+    
+    if (caller && callee?.id) {
       this.addRelation({
-        source: this.currentFile,
-        target: functionName,
-        type: 'calls'
+        type: 'calls',
+        source: caller,
+        target: callee.id
+      });
+      
+      // 调试日志
+      console.log('[CALL]', {
+        caller,
+        callee: callee.id,
+        node: node.text
       });
     }
   }
@@ -231,24 +263,67 @@ export class CodeAnalyzer {
    * 分析导入声明
    */
   private analyzeImportStatement(node: Parser.SyntaxNode): void {
-    const source = node.childForFieldName('source')?.text.replace(/['"]/g, '');
-    if (!source) return;
-
+    const importPath = this.getImportPath(node); // 提取路径
+    const normalizedPath = this.normalizePath(importPath); // 标准化路径
+    
     this.addRelation({
+      type: 'imports',
       source: this.currentFile,
-      target: source,
-      type: 'imports'
+      target: normalizedPath
     });
+  }
+
+  private normalizePath(importPath: string): string {
+    // 内置模块列表
+    const builtinModules = ['fs', 'path', 'crypto', 'util'];
+    
+    if (builtinModules.includes(importPath)) {
+      return importPath; // 内置模块保持原样
+    }
+    
+    let resolved = path.resolve(path.dirname(this.currentFile), importPath);
+    if (fs.existsSync(resolved)) {
+      if (fs.statSync(resolved).isDirectory()) {
+        resolved = path.join(resolved, 'index.ts');
+      }
+    } else if (!resolved.endsWith('.ts')) {
+      resolved += '.ts';
+    }
+    
+    return resolved;
   }
 
   /**
    * 添加代码元素
    */
-  private addCodeElement(element: CodeElement): void {
-    const elements = this.codeIndex.get(element.name) || [];
-    elements.push(element);
-    this.codeIndex.set(element.name, elements);
-    this.knowledgeGraph.nodes.push(element);
+  private addCodeElement(element: Omit<CodeElement, 'id'>): void {
+    const elementId = (() => {
+      switch(element.type) {
+        case 'class_method':
+          return `${element.filePath}#${element.className}#${element.name}`;
+        case 'interface':
+          return `${element.filePath}#Interface#${element.name}`;
+        case 'type_alias':
+          return `${element.filePath}#Type#${element.name}`;
+        case 'constructor':
+          return `${element.filePath}#${element.className}#constructor`;
+        default:
+          return `${element.filePath}#${element.name}`;
+      }
+    })();
+
+    const newElement: CodeElement = {
+      ...element,
+      id: elementId
+    };
+
+    // 添加到知识图谱
+    this.knowledgeGraph.nodes.push(newElement);
+
+    // 更新代码索引
+    const existingElements = this.codeIndex.get(element.filePath) || [];
+    existingElements.push(newElement);
+    this.codeIndex.set(element.filePath, existingElements);
   }
 
   /**
@@ -313,22 +388,144 @@ export class CodeAnalyzer {
         file: this.currentFile,
         line: nameNode.startPosition.row + 1
       },
-      implementation: node.text
+      // implementation: node.text
     };
 
     this.addCodeElement(element);
   }
 
   public validateAnalysis(): boolean {
-    const hasNodes = this.knowledgeGraph.nodes.length > 0;
-    const hasEdges = this.knowledgeGraph.edges.length > 0;
-    const hasIndex = this.codeIndex.size > 0;
+    let isValid = true;
+    
+    // 唯一性检查
+    const idSet = new Set<string>();
+    this.knowledgeGraph.nodes.forEach(node => {
+      if (idSet.has(node.id)) {
+        console.error(`[Validation] 重复节点ID: ${node.id}`);
+        isValid = false;
+      }
+      idSet.add(node.id);
+    });
 
-    console.log(`[CodeAnalyzer] Validation results:`);
-    console.log(`- Has nodes: ${hasNodes}`);
-    console.log(`- Has edges: ${hasEdges}`);
-    console.log(`- Has index: ${hasIndex}`);
+    // 关系有效性检查
+    this.knowledgeGraph.edges.forEach(edge => {
+      if (!this.findElementById(edge.source)) {
+        console.error(`[Validation] 无效关系源: ${edge.source}`);
+        isValid = false;
+      }
+      if (!this.findElementById(edge.target)) {
+        console.error(`[Validation] 无效关系目标: ${edge.target}`);
+        isValid = false;
+      }
+    });
 
-    return hasNodes && hasEdges && hasIndex;
+    return isValid;
+  }
+
+  private findElementById(id: string): CodeElement | undefined {
+    return this.knowledgeGraph.nodes.find(node => node.id === id);
+  }
+
+  private analyzeClassMethod(node: Parser.SyntaxNode, className: string) {
+    const isConstructor = node.type === 'constructor';
+    const methodNameNode = isConstructor 
+      ? node.childForFieldName('name') // 构造函数可能没有name字段
+      : node.childForFieldName('name');
+    
+    const methodName = methodNameNode?.text || 'anonymous';
+    
+    const element: CodeElement = {
+      type: isConstructor ? 'constructor' : 'class_method',
+      name: isConstructor ? 'constructor' : methodName,
+      id: isConstructor 
+        ? `${this.currentFile}#${className}#constructor`
+        : `${this.currentFile}#${className}#${methodName}`,
+      className
+    };
+    
+    // 调试日志
+    console.log('[DEBUG] Adding class method:', {
+      type: element.type,
+      id: element.id,
+      className
+    });
+
+    this.addCodeElement(element);
+  }
+
+  private analyzeImplementsRelation(node: Parser.SyntaxNode): void {
+    const interfaces = node.text.replace('implements ', '').split(',');
+    const currentClassId = `${this.currentFile}#${this.currentClass}`;
+
+    interfaces.forEach(iface => {
+      const interfaceId = this.resolveTypeReference(iface.trim());
+      if (interfaceId) {
+        this.addRelation({
+          source: currentClassId,
+          target: interfaceId,
+          type: 'implements'
+        });
+      }
+    });
+  }
+
+  private analyzeTypeAlias(node: Parser.SyntaxNode): void {
+    const nameNode = node.childForFieldName('name');
+    if (!nameNode) return;
+
+    const element: CodeElement = {
+      type: 'type_alias',
+      name: nameNode.text,
+      filePath: this.currentFile,
+      location: {
+        file: this.currentFile,
+        line: nameNode.startPosition.row + 1
+      }
+    };
+    this.addCodeElement(element);
+  }
+
+  private resolveCallee(node: Parser.SyntaxNode): CodeElement | undefined {
+    const calleeNode = node.childForFieldName('function');
+    if (!calleeNode) return undefined;
+
+    // 通过完整路径查找元素
+    const calleeName = calleeNode.text;
+    const calleeClass = this.currentClass;
+    
+    // 构建可能的ID格式
+    const possibleIds = [
+      `${this.currentFile}#${calleeName}`,                    // 普通函数
+      `${this.currentFile}#${calleeClass}#${calleeName}`,    // 类方法
+      `${this.currentFile}#${calleeClass}#constructor`        // 构造函数
+    ];
+
+    // 查找匹配的元素
+    for (const id of possibleIds) {
+      const element = this.findElementById(id);
+      if (element) return element;
+    }
+
+    return undefined;
+  }
+
+  private getImportPath(node: Parser.SyntaxNode): string {
+    const moduleNode = node.childForFieldName('source');
+    if (!moduleNode) return '';
+    
+    // 移除引号
+    return moduleNode.text.replace(/['"]/g, '');
+  }
+
+  private resolveTypeReference(typeName: string): string | undefined {
+    // 在当前文件中查找
+    const localElement = this.findElementByName(typeName);
+    if (localElement) return localElement.id;
+
+    // 在导入中查找
+    const importedElement = this.resolveImportedType(typeName);
+    if (importedElement) return importedElement.id;
+
+    return undefined;
   }
 } 

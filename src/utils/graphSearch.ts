@@ -1,8 +1,8 @@
 export interface KnowledgeNode {
   id: string;
-  name?: string;
-  type?: string;
-  filePath?: string;
+  name: string;
+  type: string;
+  filePath: string;
   description?: string;
   properties?: Record<string, any>;
 }
@@ -61,9 +61,10 @@ export function searchKnowledgeGraph(
   // 1. 找到名称匹配的起始节点
   const startNodes = new Set(
     graph.nodes.filter(node =>
-      entities.some(entity =>
-        node.name?.toLowerCase() === entity.toLowerCase()
-      )
+      entities.some(entity => {
+        const searchKey = node.type === 'class' ? `${node.filePath}#${node.name}` : node.name;
+        return searchKey.toLowerCase().includes(entity.toLowerCase())
+      })
     )
   );
 
@@ -75,22 +76,24 @@ export function searchKnowledgeGraph(
     if (distance > maxDistance) return;
 
     const edges = graph.edges.filter(edge => {
-      if (relationTypes.length > 0 && !relationTypes.includes(edge.type)) {
-        return false;
-      }
-      return edge.source === nodeId || edge.target === nodeId;
+      // 双重过滤：类型过滤+方向过滤
+      const typeMatch = relationTypes.length ? relationTypes.includes(edge.type) : true;
+      const directionMatch = edge.type === 'imports' ? edge.source === nodeId : true;
+      return typeMatch && directionMatch;
     });
 
-    for (const edge of edges) {
-      relatedEdges.add(edge);
-      const relatedNodeId = edge.source === nodeId ? edge.target : edge.source;
-      const relatedNode = graph.nodes.find(n => n.id === relatedNodeId);
+    edges.forEach(edge => {
+      const isBidirectional = !['imports', 'extends'].includes(edge.type);
+      const targetNodeId = edge.source === nodeId ? edge.target : isBidirectional ? edge.source : null;
 
-      if (relatedNode && !relatedNodes.has(relatedNode)) {
-        relatedNodes.add(relatedNode);
-        findRelatedNodes(relatedNode.id, distance + 1);
+      if (targetNodeId) {
+        const relatedNode = graph.nodes.find(n => n.id === targetNodeId);
+        if (relatedNode && !relatedNodes.has(relatedNode)) {
+          relatedNodes.add(relatedNode);
+          findRelatedNodes(targetNodeId, distance + 1);
+        }
       }
-    }
+    });
   }
 
   // 从每个起始实体开始搜索关联
@@ -125,4 +128,12 @@ export function searchKnowledgeGraph(
       maxDistance
     }
   };
+}
+
+function printGraphStats() {
+  console.log('Nodes:', this.knowledgeGraph.nodes.length);
+  console.log('Edges:', this.knowledgeGraph.edges.length);
+  console.log('Unique Relationships:', 
+    new Set(this.knowledgeGraph.edges.map(e => `${e.type}:${e.source}->${e.target}`)).size
+  );
 } 
