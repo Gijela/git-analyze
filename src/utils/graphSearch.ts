@@ -3,8 +3,13 @@ export interface KnowledgeNode {
   name: string;
   type: string;
   filePath: string;
+  location: {
+    file: string;
+    line: number;
+  };
   description?: string;
   properties?: Record<string, any>;
+  implementation?: string;
 }
 
 export interface KnowledgeEdge {

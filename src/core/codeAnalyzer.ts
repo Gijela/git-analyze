@@ -6,11 +6,11 @@ import fs from 'fs';
 import { KnowledgeNode, KnowledgeEdge, KnowledgeGraph as IKnowledgeGraph } from '../utils/graphSearch';
 
 // 代码元素类型定义
-type ElementType = 
-  | 'function' 
-  | 'class' 
-  | 'interface' 
-  | 'variable' 
+type ElementType =
+  | 'function'
+  | 'class'
+  | 'interface'
+  | 'variable'
   | 'import'
   | 'constructor'
   | 'class_method'
@@ -27,11 +27,11 @@ interface CodeElement {
     file: string;
     line: number;
   };
-  // implementation?: string;
+  implementation?: string;
 }
 
 // 代码关系类型
-export type RelationType = 
+export type RelationType =
   | 'calls'      // 函数调用关系
   | 'imports'    // 导入关系
   | 'extends'    // 继承关系
@@ -153,7 +153,8 @@ export class CodeAnalyzer {
       location: {
         file: this.currentFile,
         line: nameNode.startPosition.row + 1
-      }
+      },
+      implementation: node.text
     };
 
     // 设置当前函数上下文
@@ -178,9 +179,10 @@ export class CodeAnalyzer {
       location: {
         file: this.currentFile,
         line: node.startPosition.row + 1
-      }
+      },
+      implementation: node.text
     };
-    
+
     this.addCodeElement(classElement);
     this.currentClass = className;
 
@@ -229,7 +231,8 @@ export class CodeAnalyzer {
         file: this.currentFile,
         line: nameNode.startPosition.row + 1
       },
-      id: `${this.currentFile}#Interface#${nameNode.text}`
+      id: `${this.currentFile}#Interface#${nameNode.text}`,
+      implementation: node.text
     };
     this.addCodeElement(element);
   }
@@ -242,7 +245,7 @@ export class CodeAnalyzer {
     if (calleeName) {
       const currentNode = this.codeElements.find(e => e.id === currentScope);
       const calleeNode = this.codeElements.find(e => e.id === calleeName);
-      
+
       if (currentNode && calleeNode) {
         console.log(`[Debug] Found call expression:`, {
           caller: currentNode.name,
@@ -272,19 +275,19 @@ export class CodeAnalyzer {
   private normalizePath(importPath: string): string {
     // 内置模块列表
     const builtinModules = ['fs', 'path', 'crypto', 'util'];
-    
+
     if (builtinModules.includes(importPath)) {
       return importPath;
     }
-    
+
     // 将相对路径转换为绝对路径
     const fullPath = path.resolve(path.dirname(this.currentFile), importPath);
-    
+
     // 确保路径以 .ts 结尾
     if (!fullPath.endsWith('.ts')) {
       return `${fullPath}.ts`;
     }
-    
+
     return fullPath;
   }
 
@@ -293,7 +296,7 @@ export class CodeAnalyzer {
    */
   private addCodeElement(element: Omit<CodeElement, 'id'>): void {
     const elementId = (() => {
-      switch(element.type) {
+      switch (element.type) {
         case 'class':
           return `${element.filePath}#${element.name}`;
         case 'class_method':
@@ -347,9 +350,9 @@ export class CodeAnalyzer {
     };
 
     // 检查是否已存在相同的关系
-    const exists = this.relations.some(r => 
-      r.sourceId === source && 
-      r.targetId === target && 
+    const exists = this.relations.some(r =>
+      r.sourceId === source &&
+      r.targetId === target &&
       r.type === type
     );
 
@@ -382,20 +385,21 @@ export class CodeAnalyzer {
       totalRelations: this.relations.length
     });
 
-    // 1. 先转换节点
+    // 1. 先转换节点,添加 implementation 字段
     const nodes: KnowledgeNode[] = this.codeElements.map(element => ({
       id: element.id!,
       name: element.name,
       type: element.type,
       filePath: element.filePath,
-      location: element.location
+      location: element.location,
+      implementation: element.implementation || '' // 添加 implementation 字段
     }));
 
     // 2. 验证所有关系
     const validRelations = this.relations.filter(relation => {
       const sourceExists = this.codeElements.some(e => e.id === relation.sourceId);
       const targetExists = this.codeElements.some(e => e.id === relation.targetId);
-      
+
       if (!sourceExists || !targetExists) {
         console.warn(`[Warning] Invalid relation:`, {
           source: relation.sourceId,
@@ -465,7 +469,8 @@ export class CodeAnalyzer {
       location: {
         file: this.currentFile,
         line: nameNode.startPosition.row + 1
-      }
+      },
+      implementation: node.text
     };
 
     this.addCodeElement(element);
@@ -473,7 +478,7 @@ export class CodeAnalyzer {
 
   public validateAnalysis(): boolean {
     let isValid = true;
-    
+
     // 唯一性检查
     const idSet = new Set<string>();
     this.codeElements.forEach(node => {
@@ -490,7 +495,7 @@ export class CodeAnalyzer {
     this.relations.forEach(edge => {
       const sourceExists = this.codeElements.some(e => e.id === edge.sourceId);
       const targetExists = this.codeElements.some(e => e.id === edge.targetId);
-      
+
       if (!sourceExists) {
         console.error(`[Validation] 无效关系源: ${edge.sourceId}`);
         isValid = false;
@@ -515,12 +520,12 @@ export class CodeAnalyzer {
 
   private analyzeClassMethod(node: Parser.SyntaxNode, className: string): void {
     const isConstructor = node.type === 'constructor';
-    const methodNameNode = isConstructor 
+    const methodNameNode = isConstructor
       ? node.childForFieldName('name')
       : node.childForFieldName('name');
-    
+
     const methodName = methodNameNode?.text || 'anonymous';
-    
+
     // 1. 添加方法定义
     const element: CodeElement = {
       type: isConstructor ? 'constructor' : 'class_method',
@@ -532,13 +537,13 @@ export class CodeAnalyzer {
       },
       className
     };
-    
+
     this.addCodeElement(element);
 
     // 2. 添加类定义方法的关系
     const classId = `${this.currentFile}#${className}`;
     const methodId = `${this.currentFile}#${className}#${methodName}`;
-    
+
     console.log(`[Debug] Adding class method relation:`, {
       class: className,
       method: methodName,
@@ -554,7 +559,7 @@ export class CodeAnalyzer {
   private validateMethodRelation(classId: string, methodId: string): boolean {
     const classNode = this.codeElements.find(e => e.id === classId);
     const methodNode = this.codeElements.find(e => e.id === methodId);
-    
+
     if (!classNode) {
       console.error(`[Error] Class node not found: ${classId}`);
       return false;
@@ -563,14 +568,14 @@ export class CodeAnalyzer {
       console.error(`[Error] Method node not found: ${methodId}`);
       return false;
     }
-    
+
     console.log(`[Debug] Validated method relation:`, {
       class: classNode.name,
       method: methodNode.name,
       classId,
       methodId
     });
-    
+
     return true;
   }
 
@@ -609,7 +614,7 @@ export class CodeAnalyzer {
     // 通过完整路径查找元素
     const calleeName = calleeNode.text;
     const calleeClass = this.currentClass;
-    
+
     // 构建可能的ID格式
     const possibleIds = [
       `${this.currentFile}#${calleeName}`,                    // 普通函数
@@ -629,7 +634,7 @@ export class CodeAnalyzer {
   private getImportPath(node: Parser.SyntaxNode): string {
     const moduleNode = node.childForFieldName('source');
     if (!moduleNode) return '';
-    
+
     // 移除引号
     return moduleNode.text.replace(/['"]/g, '');
   }
