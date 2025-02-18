@@ -168,28 +168,50 @@ export class CodeAnalyzer {
    */
   private analyzeClassDeclaration(node: Parser.SyntaxNode, filePath: string): void {
     const className = this.getNodeName(node);
-    if (className) {
-      // 添加类定义关系
-      this.addRelation(filePath, className, 'defines');
-      
-      // 检查继承关系
-      const extendsClause = node.childForFieldName('extends');
-      if (extendsClause) {
-        const parentClass = this.getNodeName(extendsClause);
-        if (parentClass) {
-          this.addRelation(className, parentClass, 'extends');
+    if (!className) return;
+
+    // 1. 添加类定义
+    const classElement: CodeElement = {
+      type: 'class',
+      name: className,
+      filePath: this.currentFile,
+      location: {
+        file: this.currentFile,
+        line: node.startPosition.row + 1
+      }
+    };
+    
+    this.addCodeElement(classElement);
+    this.currentClass = className;
+
+    // 2. 分析继承关系
+    const extendsClause = node.childForFieldName('extends');
+    if (extendsClause) {
+      const superClassName = this.getNodeName(extendsClause);
+      if (superClassName) {
+        const currentClassId = `${this.currentFile}#${className}`;
+        const superClassId = this.resolveTypeReference(superClassName);
+        if (superClassId) {
+          console.log(`[Debug] Adding extends relation: ${className} extends ${superClassName}`);
+          this.addRelation(currentClassId, superClassId, 'extends');
         }
       }
-      
-      // 检查接口实现
-      const implementsClause = node.childForFieldName('implements');
-      if (implementsClause) {
-        const interfaces = this.getImplementedInterfaces(implementsClause);
-        interfaces.forEach(interfaceName => {
-          this.addRelation(className, interfaceName, 'implements');
-        });
+    }
+
+    // 3. 分析类的方法
+    for (const child of node.children) {
+      if (child.type === 'method_definition' || child.type === 'constructor') {
+        this.analyzeClassMethod(child, className);
       }
     }
+
+    // 4. 分析接口实现
+    const implementsClause = node.childForFieldName('implements');
+    if (implementsClause) {
+      this.analyzeImplementsRelation(implementsClause);
+    }
+
+    this.currentClass = null;
   }
 
   /**
@@ -272,72 +294,66 @@ export class CodeAnalyzer {
   private addCodeElement(element: Omit<CodeElement, 'id'>): void {
     const elementId = (() => {
       switch(element.type) {
+        case 'class':
+          return `${element.filePath}#${element.name}`;
         case 'class_method':
+        case 'constructor':
           return `${element.filePath}#${element.className}#${element.name}`;
         case 'interface':
           return `${element.filePath}#Interface#${element.name}`;
         case 'type_alias':
           return `${element.filePath}#Type#${element.name}`;
-        case 'constructor':
-          return `${element.filePath}#${element.className}#constructor`;
         default:
           return `${element.filePath}#${element.name}`;
       }
     })();
 
-    const newElement: CodeElement = {
+    const codeElement: CodeElement = {
       ...element,
       id: elementId
     };
 
-    this.codeElements.push(newElement);
+    console.log(`[Debug] Adding code element:`, {
+      type: element.type,
+      name: element.name,
+      id: elementId,
+      className: 'className' in element ? element.className : undefined
+    });
+
+    this.codeElements.push(codeElement);
   }
 
   /**
    * 添加关系
    */
   private addRelation(source: string, target: string, type: RelationType): void {
-    // 对于导入关系，需要特殊处理
-    if (type === 'imports') {
-      const normalizedTarget = this.normalizePath(target);
-      // 不需要检查目标节点存在性，因为导入的可能是整个文件
-      const relation: CodeRelation = {
-        sourceId: source,
-        targetId: normalizedTarget,
-        type: type
-      };
-      
-      if (!this.relations.some(r => 
-        r.sourceId === source && 
-        r.targetId === normalizedTarget && 
-        r.type === type
-      )) {
-        this.relations.push(relation);
-        console.log(`[Debug] Added import relation: ${source} -[${type}]-> ${normalizedTarget}`);
-      }
-      return;
-    }
-
-    // 其他类型的关系保持原有逻辑
+    // 检查源节点和目标节点是否存在
     const sourceNode = this.codeElements.find(e => e.id === source);
     const targetNode = this.codeElements.find(e => e.id === target);
 
-    if (!sourceNode || !targetNode) {
-      console.warn(`[Warning] Node not found: source=${source}, target=${target}`);
+    if (!sourceNode) {
+      console.warn(`[Warning] Source node not found: ${source}`);
+      return;
+    }
+    if (!targetNode) {
+      console.warn(`[Warning] Target node not found: ${target}`);
       return;
     }
 
     const relation: CodeRelation = {
       sourceId: source,
       targetId: target,
-      type: type
+      type
     };
 
-    if (!this.relations.some(r => 
+    // 检查是否已存在相同的关系
+    const exists = this.relations.some(r => 
       r.sourceId === source && 
       r.targetId === target && 
       r.type === type
-    )) {
+    );
+
+    if (!exists) {
       this.relations.push(relation);
       console.log(`[Debug] Added relation: ${sourceNode.name} -[${type}]-> ${targetNode.name}`);
     }
@@ -366,25 +382,45 @@ export class CodeAnalyzer {
       totalRelations: this.relations.length
     });
 
+    // 1. 先转换节点
     const nodes: KnowledgeNode[] = this.codeElements.map(element => ({
-      id: element.id || '',
+      id: element.id!,
       name: element.name,
       type: element.type,
       filePath: element.filePath,
       location: element.location
     }));
 
-    const edges: KnowledgeEdge[] = this.relations.map(relation => ({
+    // 2. 验证所有关系
+    const validRelations = this.relations.filter(relation => {
+      const sourceExists = this.codeElements.some(e => e.id === relation.sourceId);
+      const targetExists = this.codeElements.some(e => e.id === relation.targetId);
+      
+      if (!sourceExists || !targetExists) {
+        console.warn(`[Warning] Invalid relation:`, {
+          source: relation.sourceId,
+          target: relation.targetId,
+          type: relation.type,
+          sourceExists,
+          targetExists
+        });
+        return false;
+      }
+      return true;
+    });
+
+    // 3. 转换关系
+    const edges: KnowledgeEdge[] = validRelations.map(relation => ({
       source: relation.sourceId,
       target: relation.targetId,
       type: relation.type,
       properties: {}
     }));
 
-    console.log(`[Debug] Converted graph:`, {
-      nodesCount: nodes.length,
-      edgesCount: edges.length,
-      sampleEdge: edges[0]
+    console.log(`[Debug] Knowledge graph generated:`, {
+      nodes: nodes.length,
+      edges: edges.length,
+      relationTypes: new Set(edges.map(e => e.type))
     });
 
     return { nodes, edges };
@@ -485,9 +521,10 @@ export class CodeAnalyzer {
     
     const methodName = methodNameNode?.text || 'anonymous';
     
+    // 1. 添加方法定义
     const element: CodeElement = {
       type: isConstructor ? 'constructor' : 'class_method',
-      name: isConstructor ? 'constructor' : methodName,
+      name: methodName,
       filePath: this.currentFile,
       location: {
         file: this.currentFile,
@@ -497,6 +534,44 @@ export class CodeAnalyzer {
     };
     
     this.addCodeElement(element);
+
+    // 2. 添加类定义方法的关系
+    const classId = `${this.currentFile}#${className}`;
+    const methodId = `${this.currentFile}#${className}#${methodName}`;
+    
+    console.log(`[Debug] Adding class method relation:`, {
+      class: className,
+      method: methodName,
+      classId,
+      methodId,
+      type: element.type
+    });
+
+    this.addRelation(classId, methodId, 'defines');
+  }
+
+  // 添加一个辅助方法来验证关系
+  private validateMethodRelation(classId: string, methodId: string): boolean {
+    const classNode = this.codeElements.find(e => e.id === classId);
+    const methodNode = this.codeElements.find(e => e.id === methodId);
+    
+    if (!classNode) {
+      console.error(`[Error] Class node not found: ${classId}`);
+      return false;
+    }
+    if (!methodNode) {
+      console.error(`[Error] Method node not found: ${methodId}`);
+      return false;
+    }
+    
+    console.log(`[Debug] Validated method relation:`, {
+      class: classNode.name,
+      method: methodNode.name,
+      classId,
+      methodId
+    });
+    
+    return true;
   }
 
   private analyzeImplementsRelation(node: Parser.SyntaxNode): void {

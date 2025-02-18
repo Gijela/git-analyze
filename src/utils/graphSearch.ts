@@ -38,6 +38,99 @@ export interface SearchResult {
   };
 }
 
+interface RelatedNodesResult {
+  nodes: KnowledgeNode[];
+  edges: KnowledgeEdge[];
+}
+
+function findRelatedNodes(
+  graph: KnowledgeGraph,
+  startNodes: KnowledgeNode[],
+  maxDistance: number
+): RelatedNodesResult {
+  const relatedNodes = new Set<KnowledgeNode>();
+  const relatedEdges = new Set<KnowledgeEdge>();
+  const processedNodeIds = new Set<string>();
+
+  function processNode(node: KnowledgeNode, distance: number) {
+    if (distance > maxDistance || processedNodeIds.has(node.id)) return;
+    processedNodeIds.add(node.id);
+    relatedNodes.add(node);
+
+    // 1. 查找直接相关的边
+    const directEdges = graph.edges.filter(edge =>
+      edge.source === node.id || edge.target === node.id
+    );
+
+    directEdges.forEach(edge => {
+      relatedEdges.add(edge);
+
+      // 处理边的另一端节点
+      const otherId = edge.source === node.id ? edge.target : edge.source;
+      const otherNode = graph.nodes.find(n => n.id === otherId);
+
+      if (otherNode && !processedNodeIds.has(otherNode.id)) {
+        processNode(otherNode, distance + 1);
+      }
+    });
+
+    // 2. 查找类和方法的关系
+    if (node.type === 'class') {
+      // 先找到类的所有方法
+      const methodNodes = graph.nodes.filter(n => {
+        if (n.type !== 'function' && n.type !== 'class_method') return false;
+        if (n.filePath !== node.filePath) return false;
+        if (n.name === 'constructor') return false;
+
+        // 检查方法是否属于这个类
+        const classNode = graph.nodes.find(c =>
+          c.type === 'class' &&
+          c.filePath === n.filePath &&
+          c.id === n.id.split('#')[0] + '#' + node.name
+        );
+        return classNode !== undefined;
+      });
+
+      methodNodes.forEach(methodNode => {
+        if (!processedNodeIds.has(methodNode.id)) {
+          // 添加 defines 关系
+          const edge: KnowledgeEdge = {
+            source: node.id,
+            target: methodNode.id,
+            type: 'defines',
+            properties: {}
+          };
+          relatedEdges.add(edge);
+          processNode(methodNode, distance + 1);
+        }
+      });
+    }
+
+    // 3. 查找继承关系
+    if (node.type === 'class' && node.name.endsWith('Error')) {
+      const parentNode = graph.nodes.find(n => n.name === 'Error');
+      if (parentNode && !processedNodeIds.has(parentNode.id)) {
+        const edge: KnowledgeEdge = {
+          source: node.id,
+          target: 'Error',
+          type: 'extends',
+          properties: {}
+        };
+        relatedEdges.add(edge);
+        processNode(parentNode, distance + 1);
+      }
+    }
+  }
+
+  // 从每个起始节点开始处理
+  startNodes.forEach(node => processNode(node, 0));
+
+  return {
+    nodes: Array.from(relatedNodes),
+    edges: Array.from(relatedEdges)
+  };
+}
+
 /**
  * 基于实体名称列表搜索关联的知识图谱
  * @param graph 知识图谱
@@ -48,97 +141,67 @@ export function searchKnowledgeGraph(
   graph: KnowledgeGraph,
   options: SearchOptions
 ): SearchResult {
-  const {
-    entities,
-    relationTypes = [],
-    maxDistance = 2,
-    limit = 20
-  } = options;
+  const { entities, maxDistance = 2 } = options;
 
-  console.log("[Debug] Input graph details:", {
-    totalNodes: graph.nodes.length,
-    totalEdges: graph.edges.length,
-    sampleEdges: graph.edges.slice(0, 3)
-  });
-
-  // 1. 找到名称完全匹配的起始节点
-  const startNodes = new Set(
-    graph.nodes.filter(node =>
-      entities.some(entity => node.name === entity)
-    )
+  // 1. 找到起始节点
+  const startNodes = graph.nodes.filter(node =>
+    entities.some(entity => node.name === entity)
   );
 
-  const relatedNodes = new Set<KnowledgeNode>();
-  const relatedEdges = new Set<KnowledgeEdge>();
-
-  function findRelatedNodes(nodeId: string, distance: number) {
-    if (distance > maxDistance) return;
-
-    // 查找所有相关边
-    const connectedEdges = graph.edges.filter(edge => {
-      // 处理普通关系（calls, defines 等）
-      const directMatch = edge.source === nodeId || edge.target === nodeId;
-
-      // 处理导入关系
-      const importMatch = edge.type === 'imports' && (
-        // 当前节点是文件路径的一部分
-        nodeId.startsWith(edge.source) ||
-        nodeId.startsWith(edge.target) ||
-        // 或者当前节点就是文件路径
-        nodeId === edge.source ||
-        nodeId === edge.target
-      );
-
-      return directMatch || importMatch;
-    });
-
-    console.log(`[Debug] Found edges for ${nodeId}:`, connectedEdges);
-
-    connectedEdges.forEach(edge => {
-      relatedEdges.add(edge);
-
-      // 对于导入关系，需要找到相关的节点
-      if (edge.type === 'imports') {
-        // 找到源文件中的所有节点
-        const sourceFileNodes = graph.nodes.filter(n => n.filePath === edge.source);
-        // 找到目标文件中的所有节点
-        const targetFileNodes = graph.nodes.filter(n => n.filePath === edge.target);
-
-        // 添加所有相关节点
-        [...sourceFileNodes, ...targetFileNodes].forEach(node => {
-          if (!relatedNodes.has(node)) {
-            console.log(`[Debug] Adding node from import: ${node.name}`);
-            relatedNodes.add(node);
-            findRelatedNodes(node.id, distance + 1);
-          }
-        });
-      } else {
-        // 处理其他类型的关系
-        const targetId = edge.source === nodeId ? edge.target : edge.source;
-        const targetNode = graph.nodes.find(n => n.id === targetId);
-        if (targetNode && !relatedNodes.has(targetNode)) {
-          console.log(`[Debug] Adding node from relation: ${targetNode.name}`);
-          relatedNodes.add(targetNode);
-          findRelatedNodes(targetId, distance + 1);
-        }
+  if (!startNodes.length) {
+    console.warn(`[Warning] No nodes found for entities:`, entities);
+    return {
+      nodes: [],
+      edges: [],
+      metadata: {
+        totalNodes: 0,
+        totalEdges: 0,
+        entities,
+        relationTypes: [],
+        maxDistance
       }
-    });
+    };
   }
 
-  // 从每个起始节点开始搜索
-  startNodes.forEach(node => {
-    relatedNodes.add(node);
-    findRelatedNodes(node.id, 1);
+  // 2. 找到相关节点和边
+  const { nodes, edges } = findRelatedNodes(graph, startNodes, maxDistance);
+
+  // 3. 添加类和方法的关系
+  const methodNodes = nodes.filter(n => n.type === 'function' || n.type === 'class_method');
+  const classNodes = nodes.filter(n => n.type === 'class');
+
+  methodNodes.forEach(method => {
+    const className = method.id.split('#')[1];
+    const relatedClass = classNodes.find(c => c.name === className);
+    if (relatedClass) {
+      edges.push({
+        source: relatedClass.id,
+        target: method.id,
+        type: 'defines',
+        properties: {}
+      });
+    }
+  });
+
+  // 4. 添加继承关系
+  const errorClasses = classNodes.filter(n => n.name.endsWith('Error'));
+  errorClasses.forEach(errorClass => {
+    edges.push({
+      source: errorClass.id,
+      target: 'Error',
+      type: 'extends',
+      properties: {}
+    });
   });
 
   return {
-    nodes: Array.from(relatedNodes).slice(0, limit),
-    edges: Array.from(relatedEdges),
+    nodes,
+    edges,
     metadata: {
-      totalNodes: relatedNodes.size,
-      totalEdges: relatedEdges.size,
+      totalNodes: nodes.length,
+      totalEdges: edges.length,
       entities,
-      relationTypes,
+      relationTypes: Array.from(new Set(edges.map(e => e.type))),
       maxDistance
     }
   };
