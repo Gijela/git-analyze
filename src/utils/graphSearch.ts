@@ -55,67 +55,81 @@ export function searchKnowledgeGraph(
     limit = 20
   } = options;
 
-  console.log("🚀 ~ searchKnowledgeGraph ~ entities:", entities)
-  console.log("🚀 ~ searchKnowledgeGraph ~ nodes:", graph.nodes[0])
+  console.log("[Debug] Input graph details:", {
+    totalNodes: graph.nodes.length,
+    totalEdges: graph.edges.length,
+    sampleEdges: graph.edges.slice(0, 3)
+  });
 
-  // 1. 找到名称匹配的起始节点
+  // 1. 找到名称完全匹配的起始节点
   const startNodes = new Set(
     graph.nodes.filter(node =>
-      entities.some(entity => {
-        const searchKey = node.type === 'class' ? `${node.filePath}#${node.name}` : node.name;
-        return searchKey.toLowerCase().includes(entity.toLowerCase())
-      })
+      entities.some(entity => node.name === entity)
     )
   );
 
-  // 2. 找到相关联的节点和边
   const relatedNodes = new Set<KnowledgeNode>();
   const relatedEdges = new Set<KnowledgeEdge>();
 
   function findRelatedNodes(nodeId: string, distance: number) {
     if (distance > maxDistance) return;
 
-    const edges = graph.edges.filter(edge => {
-      // 双重过滤：类型过滤+方向过滤
-      const typeMatch = relationTypes.length ? relationTypes.includes(edge.type) : true;
-      const directionMatch = edge.type === 'imports' ? edge.source === nodeId : true;
-      return typeMatch && directionMatch;
+    // 查找所有相关边
+    const connectedEdges = graph.edges.filter(edge => {
+      // 处理普通关系（calls, defines 等）
+      const directMatch = edge.source === nodeId || edge.target === nodeId;
+
+      // 处理导入关系
+      const importMatch = edge.type === 'imports' && (
+        // 当前节点是文件路径的一部分
+        nodeId.startsWith(edge.source) ||
+        nodeId.startsWith(edge.target) ||
+        // 或者当前节点就是文件路径
+        nodeId === edge.source ||
+        nodeId === edge.target
+      );
+
+      return directMatch || importMatch;
     });
 
-    edges.forEach(edge => {
-      const isBidirectional = !['imports', 'extends'].includes(edge.type);
-      const targetNodeId = edge.source === nodeId ? edge.target : isBidirectional ? edge.source : null;
+    console.log(`[Debug] Found edges for ${nodeId}:`, connectedEdges);
 
-      if (targetNodeId) {
-        const relatedNode = graph.nodes.find(n => n.id === targetNodeId);
-        if (relatedNode && !relatedNodes.has(relatedNode)) {
-          relatedNodes.add(relatedNode);
-          findRelatedNodes(targetNodeId, distance + 1);
+    connectedEdges.forEach(edge => {
+      relatedEdges.add(edge);
+
+      // 对于导入关系，需要找到相关的节点
+      if (edge.type === 'imports') {
+        // 找到源文件中的所有节点
+        const sourceFileNodes = graph.nodes.filter(n => n.filePath === edge.source);
+        // 找到目标文件中的所有节点
+        const targetFileNodes = graph.nodes.filter(n => n.filePath === edge.target);
+
+        // 添加所有相关节点
+        [...sourceFileNodes, ...targetFileNodes].forEach(node => {
+          if (!relatedNodes.has(node)) {
+            console.log(`[Debug] Adding node from import: ${node.name}`);
+            relatedNodes.add(node);
+            findRelatedNodes(node.id, distance + 1);
+          }
+        });
+      } else {
+        // 处理其他类型的关系
+        const targetId = edge.source === nodeId ? edge.target : edge.source;
+        const targetNode = graph.nodes.find(n => n.id === targetId);
+        if (targetNode && !relatedNodes.has(targetNode)) {
+          console.log(`[Debug] Adding node from relation: ${targetNode.name}`);
+          relatedNodes.add(targetNode);
+          findRelatedNodes(targetId, distance + 1);
         }
       }
     });
   }
 
-  // 从每个起始实体开始搜索关联
+  // 从每个起始节点开始搜索
   startNodes.forEach(node => {
     relatedNodes.add(node);
     findRelatedNodes(node.id, 1);
   });
-
-  // 如果没有找到任何起始节点，返回空结果
-  if (startNodes.size === 0) {
-    return {
-      nodes: [],
-      edges: [],
-      metadata: {
-        totalNodes: 0,
-        totalEdges: 0,
-        entities,
-        relationTypes,
-        maxDistance
-      }
-    };
-  }
 
   return {
     nodes: Array.from(relatedNodes).slice(0, limit),
@@ -130,10 +144,10 @@ export function searchKnowledgeGraph(
   };
 }
 
-function printGraphStats() {
-  console.log('Nodes:', this.knowledgeGraph.nodes.length);
-  console.log('Edges:', this.knowledgeGraph.edges.length);
-  console.log('Unique Relationships:', 
-    new Set(this.knowledgeGraph.edges.map(e => `${e.type}:${e.source}->${e.target}`)).size
+function printGraphStats(graph: KnowledgeGraph) {
+  console.log('Nodes:', graph.nodes.length);
+  console.log('Edges:', graph.edges.length);
+  console.log('Unique Relationships:',
+    new Set(graph.edges.map(e => `${e.type}:${e.source}->${e.target}`)).size
   );
 } 
