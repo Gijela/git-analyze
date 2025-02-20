@@ -16,9 +16,8 @@
   ],
   "scripts": {
     "dev": "tsup src/index.ts --format esm --watch",
-    "build": "tsup src/index.ts --format esm --dts --clean",
     "format": "prettier --write \"src/**/*.ts\"",
-    "example": "tsx example/index.ts"
+    "build": "tsx example/index.ts"
   },
   "dependencies": {
     "crypto": "^1.0.1",
