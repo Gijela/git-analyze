@@ -1,9 +1,11 @@
 import { GitIngest } from "../src";
 import express from "express";
 import { searchKnowledgeGraph } from "../src/utils/graphSearch";
+import cors from "cors";
 
 const app = express();
 const port = process.env.PORT || 3789;
+app.use(cors());
 
 const ingest = new GitIngest({
   // 默认最大文件大小

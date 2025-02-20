@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "@now/node": "^1.8.5",
+    "cors": "^2.8.5",
     "crypto": "^1.0.1",
     "glob": "^11.0.0",
     "simple-git": "^3.27.0",
