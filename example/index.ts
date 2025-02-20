@@ -1,9 +1,9 @@
-import { GitIngest } from '../src';
-import express from 'express';
-import { searchKnowledgeGraph, type SearchOptions } from '../src/utils/graphSearch';
+import { GitIngest } from "../src";
+import express from "express";
+import { searchKnowledgeGraph } from "../src/utils/graphSearch";
 
 const app = express();
-const port = 3789;
+const port = process.env.PORT || 3789;
 
 const ingest = new GitIngest({
   // 默认最大文件大小
@@ -11,34 +11,40 @@ const ingest = new GitIngest({
   // 默认文件模式
   defaultPatterns: {
     include: ["**/*"],
-    exclude: ["**/node_modules/**", "**/.git/**", "**/dist/**", "**/build/**", "*.lock", "pnpm-lock.yaml"],
-  }
+    exclude: [
+      "**/node_modules/**",
+      "**/.git/**",
+      "**/dist/**",
+      "**/build/**",
+      "*.lock",
+      "pnpm-lock.yaml",
+    ],
+  },
 });
 
 app.use(express.json());
 
-
 // 添加API路由
-app.post('/analyze', async (req, res) => {
+app.post("/analyze", async (req, res) => {
   try {
     const { url, branch, targetPaths, maxFileSize } = req.body;
     const result = await ingest.analyzeFromUrl(url, {
       branch,
       targetPaths,
-      maxFileSize
+      maxFileSize,
     });
 
     res.json({ success: true, data: result });
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
 });
 
 // 更新搜索API路由
-app.post('/search', async (req, res) => {
+app.post("/search", async (req, res) => {
   try {
     const { knowledgeGraph, ...rest } = req.body;
     const searchResults = searchKnowledgeGraph(knowledgeGraph, rest);
@@ -47,9 +53,13 @@ app.post('/search', async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: error.message
+      error: error.message,
     });
   }
+});
+
+app.get("/test", (req, res) => {
+  res.json({ success: true, data: "Hello World" });
 });
 
 // 启动服务器
