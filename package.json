@@ -16,7 +16,7 @@
   ],
   "scripts": {
     "dev": "tsup src/index.ts --format esm --watch",
-    "build": "tsup src/index.ts --format esm --dts --clean",
+    "build": "tsx example/index.ts",
     "format": "prettier --write \"src/**/*.ts\"",
     "example": "tsx example/index.ts"
   },
