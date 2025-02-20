@@ -21,6 +21,7 @@
     "example": "tsx example/index.ts"
   },
   "dependencies": {
+    "@vercel/node": "^5.1.7",
     "crypto": "^1.0.1",
     "glob": "^11.0.0",
     "simple-git": "^3.27.0",

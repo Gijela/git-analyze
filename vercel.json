@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "example/index.ts",
+      "use": "@vercel/node"
+    }
+  ]
+}
