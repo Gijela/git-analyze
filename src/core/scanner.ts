@@ -33,7 +33,14 @@ const BINARY_FILE_TYPES = [
   ".dll",
   ".so",
   ".dylib",
-];
+  ".svg",
+  ".ico",
+  ".webp",
+  ".mp4",
+  ".mp3",
+  ".wav",
+  ".avi",
+  ];
 
 export class FileScanner {
   protected processedFiles: Set<string> = new Set();
