@@ -21,8 +21,8 @@ importers:
         specifier: ^1.0.1
         version: 1.0.1
       git-analysts:
-        specifier: ^1.0.6
-        version: 1.0.6(rollup@4.29.1)
+        specifier: ^1.0.8
+        version: 1.0.8(rollup@4.29.1)
       glob:
         specifier: ^11.0.0
         version: 11.0.0
@@ -1094,8 +1094,8 @@ packages:
   get-tsconfig@4.8.1:
     resolution: {integrity: sha512-k9PN+cFBmaLWtVz29SkUoqU5O0slLuHJXt/2P+tMVFT+phsSGXGkp9t3rQIqdz0e+06EHNGs3oM6ZX1s2zHxRg==}
 
-  git-analysts@1.0.6:
-    resolution: {integrity: sha512-Rm7WEwZihvsNM3PhwhgqWRdcgTb7WOB6WJDwqnbbyQDAXwE0+I7ebmt+d9GdB6AJG6M+YMQKuFSUICKFYDr3oQ==}
+  git-analysts@1.0.8:
+    resolution: {integrity: sha512-qEMk2fcU54JZo/2hk9cAAmjKYbkWaTqVo9VtGf4itBpy+nWISu7z+UGRFbj6g9+xk1Bes4EK33/jKFX1NzlaVQ==}
 
   glob-parent@5.1.2:
     resolution: {integrity: sha512-AOIgSQCepiJYwP3ARnGx+5VnTu2HBYdzbGP45eLw1vr3zB3vZLeyed1sC9hnbcOc9/SrMyM5RPQrkGz4aS9Zow==}
@@ -2674,7 +2674,7 @@ snapshots:
     dependencies:
       resolve-pkg-maps: 1.0.0
 
-  git-analysts@1.0.6(rollup@4.29.1):
+  git-analysts@1.0.8(rollup@4.29.1):
     dependencies:
       '@now/node': 1.8.5
       '@vercel/node': 5.1.8(rollup@4.29.1)

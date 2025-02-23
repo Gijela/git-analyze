@@ -1,4 +1,5 @@
-// import { GitIngest } from "../dist/src/index.js";
+// import { GitIngest } from "../dist/index.js";
+// import { GitIngest } from "../node_modules/git-analysts/dist/src/index.js";
 import { GitIngest } from "git-analysts";
 import express from "express";
 // import { searchKnowledgeGraph } from "../src/utils/graphSearch";
