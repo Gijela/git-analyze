@@ -1,6 +1,7 @@
-import { GitIngest } from "../src";
+// import { GitIngest } from "../dist/src/index.js";
+import { GitIngest } from "git-analysts";
 import express from "express";
-import { searchKnowledgeGraph } from "../src/utils/graphSearch";
+// import { searchKnowledgeGraph } from "../src/utils/graphSearch";
 import cors from "cors";
 
 const app = express();
@@ -27,7 +28,7 @@ const ingest = new GitIngest({
 app.use(express.json());
 
 // 添加API路由
-app.post("/analyze", async (req, res) => {
+app.post("/analyze", async (req: any, res: any) => {
   try {
     const { url, branch, targetPaths, maxFileSize } = req.body;
     const result = await ingest.analyzeFromUrl(url, {
@@ -40,27 +41,26 @@ app.post("/analyze", async (req, res) => {
   } catch (error) {
     res.status(500).json({
       success: false,
-      error: error.message,
     });
   }
 });
 
 // 更新搜索API路由
-app.post("/search", async (req, res) => {
-  try {
-    const { knowledgeGraph, ...rest } = req.body;
-    const searchResults = searchKnowledgeGraph(knowledgeGraph, rest);
+// app.post("/search", async (req, res) => {
+//   try {
+//     const { knowledgeGraph, ...rest } = req.body;
+//     const searchResults = searchKnowledgeGraph(knowledgeGraph, rest);
 
-    res.json({ success: true, data: searchResults });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      error: error.message,
-    });
-  }
-});
+//     res.json({ success: true, data: searchResults });
+//   } catch (error) {
+//     res.status(500).json({
+//       success: false,
+//       error: error.message,
+//     });
+//   }
+// });
 
-app.get("/test", (req, res) => {
+app.post("/test", (req: any, res: any) => {
   res.json({ success: true, data: "Hello World" });
 });
 
@@ -68,3 +68,5 @@ app.get("/test", (req, res) => {
 app.listen(port, () => {
   console.log(`服务器运行在 http://localhost:${port}`);
 });
+
+export default app;

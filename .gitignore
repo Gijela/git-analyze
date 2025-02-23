@@ -2,7 +2,6 @@
 node_modules/
 
 # 构建输出
-dist/*
 build/*
 
 # 环境变量
@@ -43,6 +42,6 @@ coverage/
 .pnpmrc 
 
 repo
-dist
+# dist
 build
 .vercel
