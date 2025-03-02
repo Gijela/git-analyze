@@ -1,6 +1,6 @@
 {
-  "name": "git-analysts",
-  "version": "1.0.8",
+  "name": "git-analyze",
+  "version": "1.0.0",
   "description": "A tool for analyzing Git repositories ",
   "type": "module",
   "main": "./dist/index.js",
@@ -16,16 +16,10 @@
   ],
   "scripts": {
     "dev": "tsup src/index.ts --format esm --watch",
-    "format": "prettier --write \"src/**/*.ts\"",
-    "build": "tsup src/index.ts example/index.ts --format esm",
-    "example": "tsx example/index.ts"
+    "build": "tsup src/index.ts --format esm --dts"
   },
   "dependencies": {
-    "@now/node": "^1.8.5",
-    "@vercel/node": "^5.1.8",
-    "cors": "^2.8.5",
     "crypto": "^1.0.1",
-    "git-analysts": "^1.0.8",
     "glob": "^11.0.0",
     "simple-git": "^3.27.0",
     "tree-sitter": "^0.22.4",
@@ -35,10 +29,7 @@
     "typescript": "^5.7.2"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.17",
-    "@types/express": "^5.0.0",
-    "@types/node": "^22.10.7",
-    "express": "^4.21.2",
+    "@types/node": "^22.13.8",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2"
   },
@@ -51,6 +42,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Gijela/github101.git"
-  }
+    "url": "git+https://github.com/Gijela/git-analyze.git"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Gijela/git-analyze/issues"
+  },
+  "homepage": "https://github.com/Gijela/git-analyze#readme"
 }

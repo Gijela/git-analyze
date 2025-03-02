@@ -1,7 +1,6 @@
 import { GitAction } from "./core/gitAction";
 import { FileScanner } from "./core/scanner";
 import { CodeAnalyzer } from "./core/codeAnalyzer";
-import { promises as fs } from "fs";
 import path from 'path';  // 添加 path 模块
 import type {
   AnalyzeOptions,
@@ -183,7 +182,7 @@ export class GitIngest {
 
       // 重置分析器状态
       this.analyzer = new CodeAnalyzer();
-      
+
       // 分析代码并构建索引和知识图谱
       for (const file of files) {
         try {
@@ -193,7 +192,7 @@ export class GitIngest {
             const content = file.content;
             // 使用绝对路径
             const absolutePath = path.resolve(dirPath, file.path);
-            
+
             console.log(`Analyzing file: ${absolutePath}`); // 添加日志
             this.analyzer.analyzeCode(absolutePath, content);
           }
@@ -243,3 +242,5 @@ export {
 
 // 导出类型定义
 export type { AnalyzeOptions, AnalysisResult, GitIngestConfig, FileInfo, CodeAnalysis };
+
+export * from "./utils/graphSearch";
