@@ -11,6 +11,8 @@ export interface AnalyzeOptions {
   branch?: string;
   // 提交
   commit?: string;
+  // 最小公共根目录
+  miniCommonRoot?: string;
 }
 
 export interface FileInfo {
@@ -63,6 +65,8 @@ export interface AnalysisResult {
   };
   // 代码分析
   codeAnalysis: CodeAnalysis;
+  // 依赖关系图
+  dependencyGraph: any;
 }
 
 export interface CodeAnalysis {

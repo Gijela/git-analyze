@@ -5,6 +5,7 @@ interface AnalyzeOptions {
     targetPaths?: string[];
     branch?: string;
     commit?: string;
+    miniCommonRoot?: string;
 }
 interface FileInfo {
     path: string;
@@ -36,6 +37,7 @@ interface AnalysisResult {
         };
     };
     codeAnalysis: CodeAnalysis;
+    dependencyGraph: any;
 }
 interface CodeAnalysis {
     codeIndex: Map<string, any[]>;

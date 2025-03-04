@@ -573,13 +573,8 @@ var CodeAnalyzer = class {
     }
     this.currentFile = filePath;
     try {
-      console.log(`[CodeAnalyzer] Processing file: ${filePath}`);
       const tree = this.parser.parse(sourceCode);
-      console.log(`[CodeAnalyzer] AST generated for ${filePath}`);
       this.visitNode(tree.rootNode);
-      console.log(`[CodeAnalyzer] Analysis complete for ${filePath}`);
-      console.log(`[CodeAnalyzer] Found ${this.codeElements.length} nodes`);
-      console.log(`[CodeAnalyzer] Found ${this.relations.length} relationships`);
     } catch (error) {
       console.error(`[CodeAnalyzer] Error analyzing file ${filePath}:`, error);
     }
@@ -714,12 +709,6 @@ var CodeAnalyzer = class {
       const currentNode = this.codeElements.find((e) => e.id === currentScope);
       const calleeNode = this.codeElements.find((e) => e.id === calleeName);
       if (currentNode && calleeNode) {
-        console.log(`[Debug] Found call expression:`, {
-          caller: currentNode.name,
-          callee: calleeNode.name,
-          callerId: currentScope,
-          calleeId: calleeName
-        });
         this.addRelation(currentScope, calleeName, "calls");
       }
     }
@@ -730,10 +719,6 @@ var CodeAnalyzer = class {
   analyzeImportStatement(node, filePath) {
     const importPath = this.getImportPath(node);
     if (importPath) {
-      console.log(`[Debug] Found import:`, {
-        importer: filePath,
-        imported: importPath
-      });
       this.addRelation(filePath, importPath, "imports");
     }
   }
@@ -770,12 +755,6 @@ var CodeAnalyzer = class {
     const codeElement = __spreadProps(__spreadValues({}, element), {
       id: elementId
     });
-    console.log(`[Debug] Adding code element:`, {
-      type: element.type,
-      name: element.name,
-      id: elementId,
-      className: "className" in element ? element.className : void 0
-    });
     this.codeElements.push(codeElement);
   }
   /**
@@ -785,11 +764,9 @@ var CodeAnalyzer = class {
     const sourceNode = this.codeElements.find((e) => e.id === source);
     const targetNode = this.codeElements.find((e) => e.id === target);
     if (!sourceNode) {
-      console.warn(`[Warning] Source node not found: ${source}`);
       return;
     }
     if (!targetNode) {
-      console.warn(`[Warning] Target node not found: ${target}`);
       return;
     }
     const relation = {
@@ -802,7 +779,6 @@ var CodeAnalyzer = class {
     );
     if (!exists) {
       this.relations.push(relation);
-      console.log(`[Debug] Added relation: ${sourceNode.name} -[${type}]-> ${targetNode.name}`);
     }
   }
   /**
@@ -1041,6 +1017,30 @@ import path2 from "path";
 import { mkdir, rm } from "fs/promises";
 import { existsSync } from "fs";
 import crypto from "crypto";
+
+// src/utils/analyzeDependencies.ts
+import { cruise } from "dependency-cruiser";
+var analyzeDependencies = (rootDir) => __async(void 0, null, function* () {
+  try {
+    const result = yield cruise(
+      [rootDir],
+      // 要分析的目录
+      {
+        // 配置选项
+        exclude: "node_modules",
+        // 排除 node_modules
+        outputType: "json"
+        // 输出为 JSON 格式
+      }
+    );
+    const dependencies = JSON.parse(result.output);
+    return dependencies;
+  } catch (error) {
+    console.error("Error analyzing dependencies:", error);
+  }
+});
+
+// src/index.ts
 var GitIngest = class {
   constructor(config) {
     this.git = new GitAction();
@@ -1163,7 +1163,6 @@ var GitIngest = class {
             if (/\.(ts|js|tsx|jsx)$/i.test(file.path)) {
               const content = file.content;
               const absolutePath = path2.resolve(dirPath, file.path);
-              console.log(`Analyzing file: ${absolutePath}`);
               this.analyzer.analyzeCode(absolutePath, content);
             }
           } catch (error) {
@@ -1183,10 +1182,8 @@ var GitIngest = class {
           totalCode: files,
           fileTree: generateTree(files),
           sizeTree: buildSizeTree(files),
-          codeAnalysis: {
-            codeIndex,
-            knowledgeGraph
-          }
+          codeAnalysis: { codeIndex, knowledgeGraph },
+          dependencyGraph: yield analyzeDependencies(dirPath + ((options == null ? void 0 : options.miniCommonRoot) || ""))
         };
       } catch (error) {
         if (error instanceof GitIngestError) {

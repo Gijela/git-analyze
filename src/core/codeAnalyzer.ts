@@ -74,16 +74,16 @@ export class CodeAnalyzer {
     }
     this.currentFile = filePath;
     try {
-      console.log(`[CodeAnalyzer] Processing file: ${filePath}`);
+      // console.log(`[CodeAnalyzer] Processing file: ${filePath}`);
 
       const tree = this.parser.parse(sourceCode);
-      console.log(`[CodeAnalyzer] AST generated for ${filePath}`);
+      // console.log(`[CodeAnalyzer] AST generated for ${filePath}`);
 
       this.visitNode(tree.rootNode);
 
-      console.log(`[CodeAnalyzer] Analysis complete for ${filePath}`);
-      console.log(`[CodeAnalyzer] Found ${this.codeElements.length} nodes`);
-      console.log(`[CodeAnalyzer] Found ${this.relations.length} relationships`);
+      // console.log(`[CodeAnalyzer] Analysis complete for ${filePath}`);
+      // console.log(`[CodeAnalyzer] Found ${this.codeElements.length} nodes`);
+      // console.log(`[CodeAnalyzer] Found ${this.relations.length} relationships`);
     } catch (error) {
       console.error(`[CodeAnalyzer] Error analyzing file ${filePath}:`, error);
     }
@@ -247,12 +247,12 @@ export class CodeAnalyzer {
       const calleeNode = this.codeElements.find(e => e.id === calleeName);
 
       if (currentNode && calleeNode) {
-        console.log(`[Debug] Found call expression:`, {
-          caller: currentNode.name,
-          callee: calleeNode.name,
-          callerId: currentScope,
-          calleeId: calleeName
-        });
+        // console.log(`[Debug] Found call expression:`, {
+        //   caller: currentNode.name,
+        //   callee: calleeNode.name,
+        //   callerId: currentScope,
+        //   calleeId: calleeName
+        // });
         this.addRelation(currentScope, calleeName, 'calls');
       }
     }
@@ -264,10 +264,10 @@ export class CodeAnalyzer {
   private analyzeImportStatement(node: Parser.SyntaxNode, filePath: string) {
     const importPath = this.getImportPath(node);
     if (importPath) {
-      console.log(`[Debug] Found import:`, {
-        importer: filePath,
-        imported: importPath
-      });
+      // console.log(`[Debug] Found import:`, {
+      //   importer: filePath,
+      //   imported: importPath
+      // });
       this.addRelation(filePath, importPath, 'imports');
     }
   }
@@ -316,12 +316,12 @@ export class CodeAnalyzer {
       id: elementId
     };
 
-    console.log(`[Debug] Adding code element:`, {
-      type: element.type,
-      name: element.name,
-      id: elementId,
-      className: 'className' in element ? element.className : undefined
-    });
+    // console.log(`[Debug] Adding code element:`, {
+    //   type: element.type,
+    //   name: element.name,
+    //   id: elementId,
+    //   className: 'className' in element ? element.className : undefined
+    // });
 
     this.codeElements.push(codeElement);
   }
@@ -335,11 +335,11 @@ export class CodeAnalyzer {
     const targetNode = this.codeElements.find(e => e.id === target);
 
     if (!sourceNode) {
-      console.warn(`[Warning] Source node not found: ${source}`);
+      // console.warn(`[Warning] Source node not found: ${source}`);
       return;
     }
     if (!targetNode) {
-      console.warn(`[Warning] Target node not found: ${target}`);
+      // console.warn(`[Warning] Target node not found: ${target}`);
       return;
     }
 
@@ -358,7 +358,7 @@ export class CodeAnalyzer {
 
     if (!exists) {
       this.relations.push(relation);
-      console.log(`[Debug] Added relation: ${sourceNode.name} -[${type}]-> ${targetNode.name}`);
+      // console.log(`[Debug] Added relation: ${sourceNode.name} -[${type}]-> ${targetNode.name}`);
     }
   }
 

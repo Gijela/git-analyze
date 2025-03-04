@@ -18,6 +18,7 @@ import {
 import { mkdir, rm } from "fs/promises";
 import { existsSync } from "fs";
 import crypto from "crypto";
+import { analyzeDependencies } from "./utils/analyzeDependencies";
 
 export class GitIngest {
   private git: GitAction;
@@ -193,7 +194,7 @@ export class GitIngest {
             // 使用绝对路径
             const absolutePath = path.resolve(dirPath, file.path);
 
-            console.log(`Analyzing file: ${absolutePath}`); // 添加日志
+            // console.log(`Analyzing file: ${absolutePath}`); // 添加日志
             this.analyzer.analyzeCode(absolutePath, content);
           }
         } catch (error) {
@@ -217,10 +218,8 @@ export class GitIngest {
         totalCode: files,
         fileTree: generateTree(files),
         sizeTree: buildSizeTree(files),
-        codeAnalysis: {
-          codeIndex: codeIndex,
-          knowledgeGraph: knowledgeGraph
-        }
+        codeAnalysis: { codeIndex, knowledgeGraph },
+        dependencyGraph: await analyzeDependencies(dirPath + (options?.miniCommonRoot || ''))
       };
     } catch (error) {
       if (error instanceof GitIngestError) {

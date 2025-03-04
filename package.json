@@ -1,6 +1,6 @@
 {
   "name": "git-analyze",
-  "version": "1.0.1",
+  "version": "1.0.4",
   "description": "A tool for analyzing Git repositories ",
   "type": "module",
   "main": "./dist/index.js",
@@ -20,6 +20,7 @@
   },
   "dependencies": {
     "crypto": "^1.0.1",
+    "dependency-cruiser": "^16.10.0",
     "glob": "^11.0.0",
     "simple-git": "^3.27.0",
     "tree-sitter": "^0.22.4",
