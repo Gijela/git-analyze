@@ -1,14 +1,28 @@
-import type { FileInfo } from '../types/index.js';
+import type { FileInfo } from "../types/index";
 
-export function estimateTokens(content: string): number {
-  return content.trim().split(/\s+/).length;
+// 估计内容 token 数量
+export function estimateTokens(text: string): number {
+  // 1. 计算中文字符数量
+  const chineseChars = (text.match(/[\u4e00-\u9fff]/g) || []).length;
+
+  // 2. 计算英文单词数量（包括数字和标点）
+  const otherChars = text.length - chineseChars;
+
+  // 3. 计算总 token：
+  // - 中文字符通常是 1:1 或 1:2 的比例，保守起见使用 2
+  // - 其他字符按照 1:0.25 的比例
+  const estimatedTokens = chineseChars * 2 + Math.ceil(otherChars / 4);
+
+  // 4. 添加 10% 的安全余量
+  return Math.ceil(estimatedTokens * 1.1);
 }
 
+// 生成目录树
 export function generateTree(files: FileInfo[]): string {
   const tree: { [key: string]: any } = {};
 
   for (const file of files) {
-    const parts = file.path.split('/');
+    const parts = file.path.split("/");
     let current = tree;
 
     for (const part of parts.slice(0, -1)) {
@@ -21,17 +35,17 @@ export function generateTree(files: FileInfo[]): string {
     current[parts[parts.length - 1]] = null;
   }
 
-  function stringify(node: any, prefix = ''): string {
-    let result = '';
+  function stringify(node: any, prefix = ""): string {
+    let result = "";
     const entries = Object.entries(node);
 
     for (let i = 0; i < entries.length; i++) {
       const [key, value] = entries[i];
       const isLast = i === entries.length - 1;
-      const connector = isLast ? '└── ' : '├── ';
-      const childPrefix = isLast ? '    ' : '│   ';
+      const connector = isLast ? "└── " : "├── ";
+      const childPrefix = isLast ? "    " : "│   ";
 
-      result += prefix + connector + key + '\n';
+      result += prefix + connector + key + "\n";
 
       if (value !== null) {
         result += stringify(value, prefix + childPrefix);
@@ -44,36 +58,64 @@ export function generateTree(files: FileInfo[]): string {
   return stringify(tree);
 }
 
-export function generateSummary(files: FileInfo[], metadata: any): string {
-  const fileTypes = new Map<string, number>();
-
-  for (const file of files) {
-    const ext = file.path.split('.').pop() || 'unknown';
-    fileTypes.set(ext, (fileTypes.get(ext) || 0) + 1);
-  }
-
-  let summary = `项目概况:\n`;
-  summary += `- 总文件数: ${metadata.files}\n`;
-  summary += `- 总大小: ${formatSize(metadata.size)}\n`;
-  summary += `- 预估Token数: ${metadata.tokens}\n\n`;
-
-  summary += `文件类型分布:\n`;
-  for (const [ext, count] of fileTypes) {
-    summary += `- ${ext}: ${count} 个文件\n`;
-  }
-
-  return summary;
+interface TreeNode {
+  name: string;
+  token: number;
+  content?: string;
+  children: { [key: string]: TreeNode };
+  isFile: boolean;
 }
 
-function formatSize(bytes: number): string {
-  const units = ['B', 'KB', 'MB', 'GB'];
-  let size = bytes;
-  let unitIndex = 0;
+// 构建文件大小树
+export function buildSizeTree(files: FileInfo[]): TreeNode {
+  // 创建根节点
+  const root: TreeNode = {
+    name: "root",
+    token: 0,
+    children: {},
+    isFile: false,
+  };
 
-  while (size >= 1024 && unitIndex < units.length - 1) {
-    size /= 1024;
-    unitIndex++;
+  // 构建树结构
+  for (const file of files) {
+    const parts = file.path.split("/");
+    let current = root;
+
+    // 遍历路径的每一部分
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i];
+      const isLastPart = i === parts.length - 1;
+
+      if (!current.children[part]) {
+        current.children[part] = {
+          name: part,
+          token: isLastPart ? file.token : 0,
+          ...(isLastPart && file.content ? { content: file.content } : {}),
+          children: {},
+          isFile: isLastPart,
+        };
+      }
+
+      current = current.children[part];
+    }
   }
 
-  return `${size.toFixed(2)} ${units[unitIndex]}`;
-} 
+  // 计算每个目录的总大小
+  function calculateSize(node: TreeNode): number {
+    if (node.isFile) {
+      return node.token;
+    }
+
+    let totalToken = 0;
+    for (const child of Object.values(node.children)) {
+      totalToken += calculateSize(child);
+    }
+    node.token = totalToken;
+    return totalToken;
+  }
+
+  calculateSize(root);
+  return root;
+}
+
+export * from './graphSearch';

@@ -1,6 +1,7 @@
 {
-  "name": "gitingest-ts",
-  "version": "0.1.0",
+  "name": "git-analyze",
+  "version": "1.0.4",
+  "description": "A tool for analyzing Git repositories ",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -15,38 +16,38 @@
   ],
   "scripts": {
     "dev": "tsup src/index.ts --format esm --watch",
-    "build": "tsup src/index.ts --format esm --dts --clean",
-    "lint": "eslint src --ext .ts",
-    "format": "prettier --write \"src/**/*.ts\"",
-    "test:example": "tsx examples/scanner.ts",
-    "test:dependency": "tsx examples/test/dependency-analysis.ts",
-    "test:branch": "tsx examples/test/branch-analysis.ts",
-    "web:dev": "tsx examples/web/server.ts",
-    "web:build": "tsup examples/web/server.ts --format esm --dts --clean"
+    "build": "tsup src/index.ts --format esm --dts"
   },
   "dependencies": {
-    "@koa/cors": "^5.0.0",
-    "@koa/router": "^13.1.0",
-    "@types/koa": "^2.15.0",
-    "@types/koa__router": "^12.0.4",
-    "@vue/compiler-sfc": "^3.5.13",
-    "dotenv": "^16.4.7",
+    "crypto": "^1.0.1",
+    "dependency-cruiser": "^16.10.0",
     "glob": "^11.0.0",
-    "koa": "^2.15.3",
-    "koa-body": "^6.0.1",
-    "koa-static": "^5.0.0",
     "simple-git": "^3.27.0",
+    "tree-sitter": "^0.22.4",
+    "tree-sitter-javascript": "^0.23.1",
+    "tree-sitter-python": "^0.23.6",
+    "tree-sitter-typescript": "^0.23.2",
     "typescript": "^5.7.2"
   },
   "devDependencies": {
-    "@types/koa-static": "^4.0.4",
-    "@types/koa__cors": "^5.0.0",
-    "@types/node": "^22.10.2",
-    "@typescript-eslint/eslint-plugin": "^8.18.2",
-    "@typescript-eslint/parser": "^8.18.2",
-    "eslint": "^9.17.0",
-    "prettier": "^3.4.2",
+    "@types/node": "^22.13.8",
     "tsup": "^8.3.5",
     "tsx": "^4.19.2"
-  }
+  },
+  "author": "Gijela",
+  "keywords": [
+    "git",
+    "analysis",
+    "ingest",
+    "code review"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Gijela/git-analyze.git"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Gijela/git-analyze/issues"
+  },
+  "homepage": "https://github.com/Gijela/git-analyze#readme"
 }
