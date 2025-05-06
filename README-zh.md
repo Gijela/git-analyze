@@ -1,52 +1,52 @@
 # Git-Analyze
 
-A powerful GitHub repository analysis tool that supports code knowledge graph construction, semantic code search, and code structure visualization.
+一个强大的 GitHub 代码仓库分析工具,支持代码知识图谱构建、语义化代码检索和代码结构可视化。
 
-## Core Features
+## 核心特性
 
-- Support code analysis from GitHub URL or local directory
-- Intelligent code dependency analysis with automatic file tracking
-- Generate code knowledge graphs showing code structure and relationships
-- Support code token consumption estimation
-- Support binary file filtering and size limits
-- Support custom domain mapping
-- Intelligent code search based on knowledge graphs
-- Support semantic code understanding and relationship analysis
-- Automatically build code knowledge base with contextual relevance search
-- Free and open source, no API key required
+- 支持从 GitHub URL 或本地目录分析代码
+- 智能代码依赖分析,自动追踪相关文件
+- 生成代码知识图谱,展示代码结构和关系
+- 支持代码 Token 消耗预估
+- 支持二进制文件过滤和大小限制
+- 支持自定义域名映射
+- 基于知识图谱的智能代码检索
+- 支持语义化代码理解和关联分析
+- 自动构建代码知识库,支持上下文相关性检索
+- 免费开源,无需 API Key
 
-## Workflow
+## 工作流程
 
-### 1. Code Acquisition
+### 1. 代码获取
 
-- Support cloning code from GitHub URL
-- Support analyzing local directories
-- Automatic temporary file cleanup
+- 支持从 GitHub URL 克隆代码
+- 支持分析本地目录
+- 自动处理临时文件清理
 
-### 2. Intelligent Knowledge Graph
+### 2. 智能知识图谱
 
-The system automatically analyzes code structure and dependencies to build a knowledge graph:
+系统会自动分析代码结构和依赖关系,构建知识图谱:
 
-- Automatic identification of code entities (classes, functions, variables, etc.)
-- Analysis of entity relationships (calls, inheritance, implementation)
-- Construction of semantic code knowledge network
-- Support for relevance-based search using the graph
-- Provide visualization of the knowledge graph
+- 自动识别代码实体(类、函数、变量等)
+- 分析实体间的调用、继承、实现关系
+- 构建语义化的代码知识网络
+- 支持基于图谱的相关性检索
+- 提供可视化知识图谱展示
 
-### 3. Dependency Analysis
+### 3. 依赖分析
 
 ```151:194:src/core/scanner.ts
-  // [Analyze dependencies as needed]: Analyze dependent files
+  // [依赖文件按需分析]: 分析依赖文件
   protected async analyzeDependencies(
     content: string,
     filePath: string,
     basePath: string
   ): Promise<string[]> {
     const dependencies: string[] = [];
-    // Match import paths. Example: import { Button } from '@/components/Button'
+    // 匹配导入路径。示例: import { Button } from '@/components/Button'
     const importRegex = /(?:import|from)\s+['"]([^'"]+)['"]/g;
 
-    // Remove multi-line comments
+    // 移除多行注释
     const contentWithoutComments = content.replace(/\/\*[\s\S]*?\*\//g, "");
     const lines = contentWithoutComments
       .split("\n")
@@ -56,33 +56,33 @@ The system automatically analyzes code structure and dependencies to build a kno
       })
       .join("\n");
 
-    // Match import paths
+    // 匹配导入路径
     let match;
-    // Iterate through each line, matching import paths
+    // 遍历每一行，匹配导入路径
     while ((match = importRegex.exec(lines)) !== null) {
-      // Get import path. Example: import { Button } from '@/components/Button'
+      // 获取导入路径。示例: import { Button } from '@/components/Button'
       const importPath = match[1];
-      // Get current file path. Example: src/components/Button/index.ts
+      // 获取当前文件路径。示例: src/components/Button/index.ts
       const currentDir = dirname(filePath);
 
-      // Find import path. Example: src/components/Button/index.ts
+      // 查找导入路径。示例: src/components/Button/index.ts
       const resolvedPath = await this.findModuleFile(
         importPath,
         currentDir,
         basePath
       );
-      // If import path exists and not in dependencies list, add it
+      // 如果导入路径存在，且不在依赖列表中，则添加到依赖列表
       if (resolvedPath && !dependencies.includes(resolvedPath)) {
         dependencies.push(resolvedPath);
       }
     }
 
-    // Return dependencies list. Example: ['src/components/Button/index.ts', 'src/components/Input/index.ts']
+    // 返回依赖列表。示例：['src/components/Button/index.ts', 'src/components/Input/index.ts']
     return dependencies;
   }
 ```
 
-### 4. Code Analysis
+### 4. 代码分析
 
 ```71:90:src/core/codeAnalyzer.ts
   public analyzeCode(filePath: string, sourceCode: string): void {
@@ -107,7 +107,7 @@ The system automatically analyzes code structure and dependencies to build a kno
   }
 ```
 
-### 5. Knowledge Graph Generation
+### 5. 知识图谱生成
 
 ```382:431:src/core/codeAnalyzer.ts
   public getKnowledgeGraph(): KnowledgeGraph {
@@ -116,17 +116,17 @@ The system automatically analyzes code structure and dependencies to build a kno
       totalRelations: this.relations.length
     });
 
-    // 1. First convert nodes, add implementation field
+    // 1. 先转换节点,添加 implementation 字段
     const nodes: KnowledgeNode[] = this.codeElements.map(element => ({
       id: element.id!,
       name: element.name,
       type: element.type,
       filePath: element.filePath,
       location: element.location,
-      implementation: element.implementation || '' // Add implementation field
+      implementation: element.implementation || '' // 添加 implementation 字段
     }));
 
-    // 2. Validate all relationships
+    // 2. 验证所有关系
     const validRelations = this.relations.filter(relation => {
       const sourceExists = this.codeElements.some(e => e.id === relation.sourceId);
       const targetExists = this.codeElements.some(e => e.id === relation.targetId);
@@ -144,7 +144,7 @@ The system automatically analyzes code structure and dependencies to build a kno
       return true;
     });
 
-    // 3. Convert relationships
+    // 3. 转换关系
     const edges: KnowledgeEdge[] = validRelations.map(relation => ({
       source: relation.sourceId,
       target: relation.targetId,
@@ -162,12 +162,12 @@ The system automatically analyzes code structure and dependencies to build a kno
   }
 ```
 
-## Usage Example
+## 使用示例
 
 ```typescript
 import { GitIngest } from "git-analyze";
 
-// Create instance
+// 创建实例
 const analyzer = new GitIngest({
   tempDir: "temp",
   defaultMaxFileSize: 1024 * 1024, // 1MB
@@ -177,7 +177,7 @@ const analyzer = new GitIngest({
   },
 });
 
-// Analyze from GitHub
+// 从 GitHub 分析
 const result = await analyzer.analyzeFromUrl(
   "https://github.com/username/repo",
   {
@@ -186,51 +186,51 @@ const result = await analyzer.analyzeFromUrl(
   }
 );
 
-// Analyze from local directory
+// 从本地目录分析
 const result = await analyzer.analyzeFromDirectory("./my-project", {
   maxFileSize: 2 * 1024 * 1024,
   includePatterns: ["src/**/*.ts"],
 });
 
-// Analysis results
-console.log(result.metadata); // Project metadata
-console.log(result.fileTree); // File tree structure
-console.log(result.sizeTree); // Size tree structure
-console.log(result.codeAnalysis); // Code analysis results
+// 分析结果
+console.log(result.metadata); // 项目元数据
+console.log(result.fileTree); // 文件树结构
+console.log(result.sizeTree); // 大小树结构
+console.log(result.codeAnalysis); // 代码分析结果
 
-// Get knowledge graph
+// 获取知识图谱
 const graph = result.knowledgeGraph;
 
-// Search related code
+// 检索相关代码
 const searchResult = await analyzer.searchRelatedCode("UserService", {
   maxResults: 10,
   includeContext: true,
 });
 
-// Get code relationships
+// 获取代码关系
 const relations = await analyzer.getCodeRelations("src/services/user.ts");
 ```
 
-## Configuration Options
+## 配置选项
 
 ### GitIngestConfig
 
 ```75:94:src/types/index.ts
 export interface GitIngestConfig {
-  // Temporary directory name for storing cloned repositories
+  // 保存克隆仓库的临时目录名
   tempDir?: string;
-  /* Maximum file size for scanning */
+  /* 默认检索的最大的文件 */
   defaultMaxFileSize?: number;
-  /* File patterns */
+  /* 文件模式 */
   defaultPatterns?: {
-    /* Files/directories to include */
+    /* 包含的文件/目录 */
     include?: string[];
-    /* Files/directories to exclude from scanning */
+    /* 不会去检索的文件/目录 */
     exclude?: string[];
   };
-  /* Keep cloned repositories */
+  /* 保留克隆的仓库 */
   keepTempFiles?: boolean;
-  /* Custom domain mapping */
+  /* 自定义域名 */
   customDomainMap?: {
     targetDomain: string;
     originalDomain: string;
@@ -242,63 +242,63 @@ export interface GitIngestConfig {
 
 ```1:14:src/types/index.ts
 export interface AnalyzeOptions {
-  // Maximum file size
+  // 最大文件大小
   maxFileSize?: number;
-  // Include file patterns
+  // 包含的文件模式
   includePatterns?: string[];
-  // Exclude file patterns
+  // 排除的文件模式
   excludePatterns?: string[];
-  // Target file paths
+  // 目标文件路径
   targetPaths?: string[];
-  // Branch
+  // 分支
   branch?: string;
-  // Commit
+  // 提交
   commit?: string;
 }
 ```
 
-## Token Estimation Algorithm
+## Token 预估算法
 
-The tool uses a smart algorithm to estimate code token consumption:
+工具使用智能算法预估代码 Token 消耗:
 
 ```4:18:src/utils/index.ts
 export function estimateTokens(text: string): number {
-  // 1. Calculate Chinese character count
+  // 1. 计算中文字符数量
   const chineseChars = (text.match(/[\u4e00-\u9fff]/g) || []).length;
 
-  // 2. Calculate English word count (including numbers and punctuation)
+  // 2. 计算英文单词数量（包括数字和标点）
   const otherChars = text.length - chineseChars;
 
-  // 3. Calculate total tokens:
-  // - Chinese characters typically have a 1:1 or 1:2 ratio, conservatively using 2
-  // - Other characters use a 1:0.25 ratio
+  // 3. 计算总 token：
+  // - 中文字符通常是 1:1 或 1:2 的比例，保守起见使用 2
+  // - 其他字符按照 1:0.25 的比例
   const estimatedTokens = chineseChars * 2 + Math.ceil(otherChars / 4);
 
-  // 4. Add 10% safety margin
+  // 4. 添加 10% 的安全余量
   return Math.ceil(estimatedTokens * 1.1);
 }
 ```
 
-## Installation
+## 安装
 
 ```bash
 npm install git-analyze
 ```
 
-## License
+## 许可证
 
 MIT
 
-## Tech Stack
+## 技术栈
 
 - TypeScript
-- tree-sitter (AST parsing)
-- glob (file matching)
-- Knowledge graph algorithms
+- tree-sitter (AST 解析)
+- glob (文件匹配)
+- 知识图谱算法
 
-## Notes
+## 注意事项
 
-1. Temporary files are not saved by default, can be retained via `keepTempFiles` configuration
-2. Binary files and node_modules are filtered by default
-3. Supported code file types: .ts, .tsx, .js, .jsx, .vue
-4. Token estimates include a 10% safety margin
+1. 默认不保存临时文件,可通过 `keepTempFiles` 配置保留
+2. 默认过滤二进制文件和 node_modules
+3. 支持的代码文件类型: .ts, .tsx, .js, .jsx, .vue
+4. Token 预估值包含 10% 的安全余量

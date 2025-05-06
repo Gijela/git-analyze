@@ -1,33 +1,44 @@
-import { GitHandler } from './core/git.js';
-import { FileScanner } from './core/scanner.js';
+import { GitAction } from "./core/gitAction";
+import { FileScanner } from "./core/scanner";
+import { CodeAnalyzer } from "./core/codeAnalyzer";
+import path from 'path';  // 添加 path 模块
 import type {
   AnalyzeOptions,
   AnalysisResult,
   GitIngestConfig,
-  FileInfo
-} from './types/index.js';
-import { estimateTokens, generateTree, generateSummary } from './utils/index.js';
-import { GitIngestError, ValidationError, GitOperationError } from './core/errors.js';
-import { mkdir, rm } from 'fs/promises';
-import { existsSync } from 'fs';
+  FileInfo,
+  CodeAnalysis
+} from "./types/index";
+import { generateTree, buildSizeTree, estimateTokens } from "./utils/index";
+import {
+  GitIngestError,
+  ValidationError,
+  GitOperationError,
+} from "./core/errors";
+import { mkdir, rm } from "fs/promises";
+import { existsSync } from "fs";
+import crypto from "crypto";
+import { analyzeDependencies } from "./utils/analyzeDependencies";
 
 export class GitIngest {
-  private git: GitHandler;
+  private git: GitAction;
   private scanner: FileScanner;
+  private analyzer: CodeAnalyzer;
   private config: GitIngestConfig;
 
   constructor(config?: GitIngestConfig) {
-    this.git = new GitHandler();
+    this.git = new GitAction();
     this.scanner = new FileScanner();
+    this.analyzer = new CodeAnalyzer();
     this.config = {
-      tempDir: './temp',
-      defaultMaxFileSize: 1024 * 1024, // 1MB
-      defaultPatterns: {
-        include: ['**/*'],
-        exclude: ['**/node_modules/**', '**/.git/**']
-      },
+      tempDir: "repo", // 默认保存仓库的目录名(不会暴露到外部)
       keepTempFiles: false, // 默认不保留临时文件
-      ...config
+      defaultMaxFileSize: 1024 * 1024, // 默认检索不超过 1MB 的文件
+      defaultPatterns: {
+        include: ["**/*"],
+        exclude: ["**/node_modules/**", "**/.git/**"],
+      },
+      ...config,
     };
   }
 
@@ -38,7 +49,10 @@ export class GitIngest {
         await rm(dirPath, { recursive: true, force: true });
       }
     } catch (error) {
-      console.warn(`Warning: Failed to cleanup temporary directory ${dirPath}: ${(error as Error).message}`);
+      console.warn(
+        `Warning: Failed to cleanup temporary directory ${dirPath}: ${(error as Error).message
+        }`
+      );
     }
   }
 
@@ -65,6 +79,7 @@ export class GitIngest {
     return url.includes(this.config.customDomainMap.targetDomain);
   }
 
+  // [核心步骤0]: 开端，根据 url 按需获取仓库代码
   async analyzeFromUrl(
     url: string,
     options?: AnalyzeOptions
@@ -75,18 +90,24 @@ export class GitIngest {
     const githubUrl = this.transformCustomDomainUrl(url);
 
     if (!githubUrl) {
-      throw new ValidationError('URL is required');
+      throw new ValidationError("URL is required");
     }
 
     if (!githubUrl.match(/^https?:\/\//)) {
-      throw new ValidationError('Invalid URL format');
+      throw new ValidationError("Invalid URL format");
     }
 
     if (!this.config.tempDir) {
-      throw new ValidationError('Temporary directory is required');
+      throw new ValidationError("Temporary directory is required");
     }
 
-    const workDir = `${this.config.tempDir}/${Date.now()}`;
+    // 从URL中提取仓库名
+    const repoMatch = githubUrl.match(/github\.com\/[^\/]+\/([^\/]+)/);
+    const repoName = repoMatch ? repoMatch[1] : "unknown";
+    // 生成唯一标识符（使用时间戳的后6位作为唯一值）
+    const uniqueId = crypto.randomBytes(3).toString("base64url").slice(0, 4);
+    const workDir = `${this.config.tempDir}/${repoName}-${uniqueId}`;
+
     let result: AnalysisResult;
 
     try {
@@ -103,7 +124,7 @@ export class GitIngest {
         await this.git.checkoutBranch(workDir, options.branch);
       }
 
-      // 扫描文件
+      // [核心步骤一]: 调用扫描目录
       result = await this.analyzeFromDirectory(workDir, options);
 
       // 如果不保留临时文件，则清理
@@ -112,9 +133,9 @@ export class GitIngest {
       }
 
       // 如果是自定义域名访问，添加额外信息
-      if (isCustomDomain) {
-        result.summary = `通过自定义域名 ${this.config.customDomainMap?.targetDomain} 访问\n原始仓库: ${githubUrl}\n\n${result.summary}`;
-      }
+      // if (isCustomDomain) {
+      //   result.summary = `通过自定义域名 ${this.config.customDomainMap?.targetDomain} 访问\n原始仓库: ${githubUrl}\n\n${result.summary}`;
+      // }
 
       return result;
     } catch (error) {
@@ -126,87 +147,99 @@ export class GitIngest {
       if (error instanceof GitIngestError) {
         throw error;
       }
-      throw new GitIngestError(`Failed to analyze repository: ${(error as Error).message}`);
+      throw new GitIngestError(
+        `Failed to analyze repository: ${(error as Error).message}`
+      );
     }
   }
 
+  // 分析扫描目录
   async analyzeFromDirectory(
-    path: string,
+    dirPath: string,
     options?: AnalyzeOptions
   ): Promise<AnalysisResult> {
-    if (!path) {
-      throw new ValidationError('Path is required');
+    if (!dirPath) {
+      throw new ValidationError("Path is required");
     }
 
-    if (!existsSync(path)) {
-      throw new ValidationError(`Directory not found: ${path}`);
+    if (!existsSync(dirPath)) {
+      throw new ValidationError(`Directory not found: ${dirPath}`);
     }
 
     try {
-      const files = await this.scanner.scanDirectory(path, {
+      const files = await this.scanner.scanDirectory(dirPath, {
         maxFileSize: options?.maxFileSize || this.config.defaultMaxFileSize,
-        includePatterns: options?.includePatterns || this.config.defaultPatterns?.include,
-        excludePatterns: options?.excludePatterns || this.config.defaultPatterns?.exclude,
+        includePatterns:
+          options?.includePatterns || this.config.defaultPatterns?.include,
+        excludePatterns:
+          options?.excludePatterns || this.config.defaultPatterns?.exclude,
         targetPaths: options?.targetPaths,
-        includeDependencies: true
+        includeDependencies: true,
       });
 
       if (files.length === 0) {
-        throw new ValidationError('No files found in the specified directory');
+        throw new ValidationError("No files found in the specified directory");
       }
 
-      // 计算元数据
-      const metadata = this.calculateMetadata(files);
+      // 重置分析器状态
+      this.analyzer = new CodeAnalyzer();
 
-      // 生成分析结果
+      // 分析代码并构建索引和知识图谱
+      for (const file of files) {
+        try {
+          // 确保是 TypeScript/JavaScript 文件
+          if (/\.(ts|js|tsx|jsx)$/i.test(file.path)) {
+            // 使用 file.content 而不是重新读取文件
+            const content = file.content;
+            // 使用绝对路径
+            const absolutePath = path.resolve(dirPath, file.path);
+
+            // console.log(`Analyzing file: ${absolutePath}`); // 添加日志
+            this.analyzer.analyzeCode(absolutePath, content);
+          }
+        } catch (error) {
+          console.warn(
+            `Warning: Failed to analyze file ${file.path}: ${(error as Error).message}`
+          );
+        }
+      }
+
+      // 获取分析结果
+      const codeIndex = this.analyzer.getCodeIndex();
+      const knowledgeGraph = this.analyzer.getKnowledgeGraph();
+
+      console.log(`Analysis complete. Found ${codeIndex.size} code elements`); // 添加日志
+
       return {
-        summary: this.generateSummary(files, metadata),
-        tree: this.generateTree(files),
-        content: this.generateContent(files),
-        metadata
+        metadata: {
+          files: files.length,
+          tokens: files.reduce((acc, file) => acc + file.token, 0),
+        },
+        totalCode: files,
+        fileTree: generateTree(files),
+        sizeTree: buildSizeTree(files),
+        codeAnalysis: { codeIndex, knowledgeGraph },
+        dependencyGraph: await analyzeDependencies(dirPath + (options?.miniCommonRoot || ''))
       };
     } catch (error) {
       if (error instanceof GitIngestError) {
         throw error;
       }
-      throw new GitIngestError(`Failed to analyze directory: ${(error as Error).message}`);
+      throw new GitIngestError(
+        `Failed to analyze directory: ${(error as Error).message}`
+      );
     }
-  }
-
-  private calculateMetadata(files: FileInfo[]) {
-    return {
-      files: files.length,
-      size: files.reduce((acc, file) => acc + file.size, 0),
-      tokens: files.reduce((acc, file) => acc + this.estimateTokens(file.content), 0)
-    };
-  }
-
-  private generateSummary(files: FileInfo[], metadata: any): string {
-    return generateSummary(files, metadata);
-  }
-
-  private generateTree(files: FileInfo[]): string {
-    return generateTree(files);
-  }
-
-  private generateContent(files: FileInfo[]): string {
-    return files.map(file => {
-      return `File: ${file.path}\n${'='.repeat(40)}\n${file.content}\n\n`;
-    }).join('\n');
-  }
-
-  private estimateTokens(content: string): number {
-    return estimateTokens(content);
   }
 }
 
 // 导出错误类型
-export { GitIngestError, ValidationError, GitOperationError } from './core/errors.js';
+export {
+  GitIngestError,
+  ValidationError,
+  GitOperationError,
+} from "./core/errors";
 
 // 导出类型定义
-export type {
-  AnalyzeOptions,
-  AnalysisResult,
-  GitIngestConfig,
-  FileInfo
-}; 
+export type { AnalyzeOptions, AnalysisResult, GitIngestConfig, FileInfo, CodeAnalysis };
+
+export * from "./utils/graphSearch";
